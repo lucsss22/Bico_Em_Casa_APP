@@ -31,6 +31,7 @@ public class Pagamento implements Identificavel {
 
     private int id;
     private int contratacaoId;       // vem da Contratação, não aparece para o usuário
+    private int idUsuario;           // usuário (do cadastro de Usuários) que registrou o pagamento
     private String nomeServico;      // vem do Serviço contratado, só é exibido
     private String nomePagador;      // quem está pagando (nem sempre é o cliente)
     private String cpfPagador;       // guardado só com os 11 dígitos, sem pontos e traço
@@ -47,11 +48,12 @@ public class Pagamento implements Identificavel {
      * Cria um pagamento novo, sempre PENDENTE.
      * Cada setter valida o seu campo; se algum falhar, o objeto não é criado.
      */
-    public Pagamento(int contratacaoId, String nomeServico, String nomePagador, String cpfPagador,
+    public Pagamento(int contratacaoId, int idUsuario, String nomeServico, String nomePagador, String cpfPagador,
                      BigDecimal valor, BigDecimal gorjeta, FormaPagamento formaPagamento) throws ValidacaoException {
         this.statusPagamento = StatusPagamento.PENDENTE;
         this.dataCriacao = LocalDate.now();
         setContratacaoId(contratacaoId);
+        setIdUsuario(idUsuario);
         setNomeServico(nomeServico);
         setNomePagador(nomePagador);
         setCpfPagador(cpfPagador);
@@ -193,6 +195,18 @@ public class Pagamento implements Identificavel {
             throw new ValidacaoException("O ID da contratação deve ser maior que zero.");
         }
         this.contratacaoId = contratacaoId;
+    }
+
+    public int getIdUsuario() {
+        return idUsuario;
+    }
+
+    /** Liga o pagamento a um usuário cadastrado (classe Usuario). */
+    public void setIdUsuario(int idUsuario) throws ValidacaoException {
+        if (idUsuario <= 0) {
+            throw new ValidacaoException("Selecione o usuário que está realizando o pagamento.");
+        }
+        this.idUsuario = idUsuario;
     }
 
     public String getNomeServico() {

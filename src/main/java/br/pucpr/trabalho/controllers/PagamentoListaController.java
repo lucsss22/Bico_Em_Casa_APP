@@ -4,6 +4,7 @@ package br.pucpr.trabalho.controllers;
 import br.pucpr.trabalho.domains.Pagamento;
 import br.pucpr.trabalho.domains.StatusPagamento;
 import br.pucpr.trabalho.domains.TipoPerfil;
+import br.pucpr.trabalho.domains.Usuario;
 import br.pucpr.trabalho.arquivos.PersistenciaException;
 import br.pucpr.trabalho.arquivos.Repositorio;
 import br.pucpr.trabalho.controllers.Conversor;
@@ -50,12 +51,15 @@ public class PagamentoListaController {
     private final String nomeServico;
     private final BigDecimal valorServico;
     private final TipoPerfil perfil;
+    private final Usuario usuario;        // usuário cadastrado que está usando a tela
 
-    public PagamentoListaController(int contratacaoId, String nomeServico, BigDecimal valorServico, TipoPerfil perfil) {
+    public PagamentoListaController(int contratacaoId, String nomeServico, BigDecimal valorServico,
+                                    TipoPerfil perfil, Usuario usuario) {
         this.contratacaoId = contratacaoId;
         this.nomeServico = nomeServico;
         this.valorServico = valorServico;
         this.perfil = perfil;
+        this.usuario = usuario;
     }
 
     public void mostrar() {
@@ -68,7 +72,7 @@ public class PagamentoListaController {
         titulo.setFont(Font.font("Arial", FontWeight.BOLD, 18));
 
         Label subtitulo = new Label("Valor do serviço: " + Conversor.formatarMoeda(valorServico)
-                + "   •   Acesso: " + perfil);
+                + "   •   Acesso: " + perfil + "   •   Usuário: " + PagamentoFormController.descreverUsuario(usuario.getId()));
 
         montarTabela();
 
@@ -107,6 +111,9 @@ public class PagamentoListaController {
         colPagador.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNomePagador()));
         colPagador.setPrefWidth(140);
 
+        TableColumn<Pagamento, String> colUsuario = new TableColumn<>("Usuário");
+        colUsuario.setCellValueFactory(c -> new SimpleStringProperty(PagamentoFormController.descreverUsuario(c.getValue().getIdUsuario())));
+
         TableColumn<Pagamento, String> colValor = new TableColumn<>("Valor");
         colValor.setCellValueFactory(c -> new SimpleStringProperty(Conversor.formatarMoeda(c.getValue().getValor())));
 
@@ -142,7 +149,7 @@ public class PagamentoListaController {
         TableColumn<Pagamento, String> colPagoEm = new TableColumn<>("Pago em");
         colPagoEm.setCellValueFactory(c -> new SimpleStringProperty(Conversor.formatarData(c.getValue().getDataPagamento())));
 
-        tabela.getColumns().addAll(List.of(colId, colPagador, colValor, colGorjeta, colTotal, colForma, colDetalhes, colStatus, colPagoEm));
+        tabela.getColumns().addAll(List.of(colId, colUsuario, colPagador, colValor, colGorjeta, colTotal, colForma, colDetalhes, colStatus, colPagoEm));
         tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         tabela.setPlaceholder(new Label("Nenhum pagamento cadastrado."));
 
@@ -168,7 +175,7 @@ public class PagamentoListaController {
             Alertas.erro(e.getMessage());
             return;
         }
-        new PagamentoFormController(repositorio, contratacaoId, nomeServico, valorServico).mostrar();
+        new PagamentoFormController(repositorio, contratacaoId, nomeServico, valorServico, usuario).mostrar();
         carregarTabela();
     }
 

@@ -1,7 +1,9 @@
 // Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
+import br.pucpr.trabalho.arquivos.ArquivosUsuario;
 import br.pucpr.trabalho.domains.TipoPerfil;
+import br.pucpr.trabalho.domains.Usuario;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -59,15 +61,19 @@ public class ComentarioPagamentoController {
         btnComentarios.setOnAction(e -> escolherContratacao("Comentários").ifPresent(c ->
                 new ComentarioListaController(c.id(), c.nomeServico()).mostrar()));
 
-        // Cliente: realiza pagamentos
+        // Cliente: realiza pagamentos (primeiro escolhe qual usuário cadastrado ele é)
         Button btnPagamentos = criarBotao("Pagamentos (cliente)");
-        btnPagamentos.setOnAction(e -> escolherContratacao("Pagamentos").ifPresent(c ->
-                new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(), TipoPerfil.CLIENTE).mostrar()));
+        btnPagamentos.setOnAction(e -> escolherUsuario("Pagamentos").ifPresent(u ->
+                escolherContratacao("Pagamentos").ifPresent(c ->
+                        new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(),
+                                TipoPerfil.CLIENTE, u).mostrar())));
 
         // Profissional: confirma recebimentos em dinheiro e estorna
         Button btnRecebimentos = criarBotao("Recebimentos (profissional)");
-        btnRecebimentos.setOnAction(e -> escolherContratacao("Recebimentos").ifPresent(c ->
-                new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(), TipoPerfil.PROFISSIONAL).mostrar()));
+        btnRecebimentos.setOnAction(e -> escolherUsuario("Recebimentos").ifPresent(u ->
+                escolherContratacao("Recebimentos").ifPresent(c ->
+                        new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(),
+                                TipoPerfil.PROFISSIONAL, u).mostrar())));
 
         Button btnFechar = criarBotao("Fechar");
         btnFechar.setOnAction(e -> stage.close());
@@ -81,6 +87,23 @@ public class ComentarioPagamentoController {
 
         stage.setScene(new Scene(raiz, 380, 420));
         stage.show();
+    }
+
+    /**
+     * Pergunta qual usuário cadastrado (classe Usuario, cadastro "Incluir Usuario")
+     * está usando a tela. Se ainda não houver usuários, avisa para cadastrar primeiro.
+     */
+    private Optional<Usuario> escolherUsuario(String tela) {
+        List<Usuario> usuarios = ArquivosUsuario.lerLista();
+        if (usuarios.isEmpty()) {
+            Alertas.erro("Nenhum usuário cadastrado.\nCadastre um usuário em \"Incluir Usuario\" no menu principal.");
+            return Optional.empty();
+        }
+        ChoiceDialog<Usuario> dialogo = new ChoiceDialog<>(usuarios.get(0), usuarios);
+        dialogo.setTitle(tela);
+        dialogo.setHeaderText("Quem é você?");
+        dialogo.setContentText("Usuário:");
+        return dialogo.showAndWait();
     }
 
     /** Pergunta de qual serviço contratado o usuário quer ver os comentários/pagamentos. */
