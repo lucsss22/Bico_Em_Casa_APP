@@ -10,6 +10,10 @@ import br.pucpr.trabalho.arquivos.PersistenciaException;
 import br.pucpr.trabalho.arquivos.Repositorio;
 import br.pucpr.trabalho.controllers.Conversor;
 import br.pucpr.trabalho.domains.Pix;
+import br.pucpr.trabalho.domains.Perfil;
+import br.pucpr.trabalho.domains.Usuario;
+import br.pucpr.trabalho.arquivos.ArquivoPerfil;
+import br.pucpr.trabalho.arquivos.ArquivosUsuario;
 import com.google.zxing.WriterException;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -56,6 +60,7 @@ public class PagamentoFormController {
     private final Pagamento pagamento;
     private final TipoPerfil perfil;
     private final int contratacaoId;
+    private final int idUsuario;      // usuário cadastrado que está pagando (ligação com Usuario/Perfil)
     private final String nomeServico;
     private final BigDecimal valor;   // preço do serviço: vem do Serviço, o usuário não digita
     private final String txid = Pix.gerarTxid();  // identificador do QR Code exibido nesta tela
@@ -80,15 +85,16 @@ public class PagamentoFormController {
     private final TextField txtValorPago = new TextField();
     private final Label lblDiferenca = new Label();
 
-    /** Modo inclusão: o cliente paga o serviço da contratação informada. */
+    /** Modo inclusão: o usuário escolhido (cliente) paga o serviço da contratação informada. */
     public PagamentoFormController(Repositorio<Pagamento> repositorio, int contratacaoId,
-                             String nomeServico, BigDecimal valorServico) {
+                             String nomeServico, BigDecimal valorServico, Usuario usuario) {
         this.repositorio = repositorio;
         this.pagamento = null;
         this.perfil = TipoPerfil.CLIENTE;   // só o cliente realiza pagamento
         this.contratacaoId = contratacaoId;
         this.nomeServico = nomeServico;
         this.valor = valorServico;
+        this.idUsuario = usuario.getId();
     }
 
     /** Modo consulta: abre um pagamento existente, com as ações permitidas ao perfil. */
@@ -99,6 +105,25 @@ public class PagamentoFormController {
         this.contratacaoId = pagamento.getContratacaoId();
         this.nomeServico = pagamento.getNomeServico();
         this.valor = pagamento.getValor();
+        this.idUsuario = pagamento.getIdUsuario();
+    }
+
+    /**
+     * Texto "Nome do usuário – cidade", buscando o Usuario e o Perfil cadastrados
+     * (classes Usuario e Perfil, do cadastro de usuários do grupo).
+     */
+    public static String descreverUsuario(int idUsuario) {
+        for (Usuario u : ArquivosUsuario.lerLista()) {
+            if (u.getId() == idUsuario) {
+                for (Perfil p : ArquivoPerfil.lerLista()) {
+                    if (p.getIdUsuario() == idUsuario) {
+                        return u.getNome() + " – " + p.getCidade();
+                    }
+                }
+                return u.getNome();
+            }
+        }
+        return idUsuario > 0 ? "usuário #" + idUsuario : "não informado";
     }
 
     private boolean isInclusao() {
@@ -125,6 +150,7 @@ public class PagamentoFormController {
         // Cabeçalho: serviço e valor (vêm da contratação)
         Label lblServico = Estilo.titulo("Serviço: " + nomeServico);
         Label lblValor = new Label("Valor do serviço: " + Conversor.formatarMoeda(valor));
+        Label lblUsuario = new Label("Usuário: " + descreverUsuario(idUsuario));
 
         GridPane grade = new GridPane();
         grade.setHgap(10);
@@ -137,7 +163,7 @@ public class PagamentoFormController {
         txtNomePagador.setPrefColumnCount(20);
         lblTotal.setStyle("-fx-font-weight: bold;");
 
-        VBox raiz = new VBox(12, lblServico, lblValor, new Separator(), grade);
+        VBox raiz = new VBox(12, lblServico, lblValor, lblUsuario, new Separator(), grade);
 
         if (podePagar()) {
             montarAreaPix();
@@ -401,7 +427,7 @@ public class PagamentoFormController {
     private Pagamento obterPagamentoComDadosDaTela() throws ValidacaoException {
         if (isInclusao()) {
             // contratacaoId, nomeServico e valor vêm do serviço contratado, não do usuário
-            return new Pagamento(contratacaoId, nomeServico, txtNomePagador.getText(),
+            return new Pagamento(contratacaoId, idUsuario, nomeServico, txtNomePagador.getText(),
                     txtCpfPagador.getText(), valor, lerGorjeta(), cbForma.getValue());
         }
         aplicarCampos();
