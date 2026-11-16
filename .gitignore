@@ -1,0 +1,17 @@
+# Maven
+target/
+
+# Arquivos de dados gerados ao usar o programa (serializacao)
+*.dat
+
+# Editores / IDEs
+.vscode/
+.idea/
+*.iml
+
+# Ferramenta de modernizacao do VS Code (gerada automaticamente)
+.github/modernize/
+
+# Sistema
+.DS_Store
+Thumbs.db
