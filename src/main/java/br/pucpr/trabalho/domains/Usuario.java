@@ -10,7 +10,7 @@ public class Usuario implements Serializable {
     private  String email; 
     private  String senha ; 
 
-    public Usuario(int id , String nome , String email , String senha )throws ValidacaoExceptio{
+    public Usuario(int id , String nome , String email , String senha )throws ValidacaoException{
         this.id = id;
         setNome(nome);
         setEmail(email);
@@ -25,9 +25,9 @@ public class Usuario implements Serializable {
         return nome ; 
     }
 
-    public void setNome(String nome) throws ValidacaoExceptio {
+    public void setNome(String nome) throws ValidacaoException {
         if(nome == null || nome.isBlank()){
-            throw new ValidacaoExceptio("O nome é obrigatorio.");
+            throw new ValidacaoException("O nome é obrigatorio.");
         }
         this.nome = nome.trim();
     }
@@ -37,13 +37,13 @@ public class Usuario implements Serializable {
         return email ; 
     }
 
-    public void setEmail(String email) throws ValidacaoExceptio {
+    public void setEmail(String email) throws ValidacaoException {
         if (email == null || email.isBlank()) {
-            throw new ValidacaoExceptio("O email é obrigatório.");
+            throw new ValidacaoException("O email é obrigatório.");
         }
         email = email.trim();
         if (!email.contains("@") || email.startsWith("@") || email.endsWith("@")) {
-            throw new ValidacaoExceptio("Email inválido.");
+            throw new ValidacaoException("Email inválido.");
         }
         this.email = email;
     }
@@ -53,9 +53,9 @@ public class Usuario implements Serializable {
         return senha ; 
     }
 
-    public void setSenha(String senha) throws ValidacaoExceptio {
+    public void setSenha(String senha) throws ValidacaoException {
         if(senha == null || senha.length()<4){
-            throw new ValidacaoExceptio("A senha deve ter pelo menos 4 caracteres");
+            throw new ValidacaoException("A senha deve ter pelo menos 4 caracteres");
         }
         this.senha = senha;
         

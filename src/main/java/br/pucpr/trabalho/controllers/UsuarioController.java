@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import br.pucpr.trabalho.arquivos.ArquivosUsuario;
 import br.pucpr.trabalho.domains.Usuario;
-import br.pucpr.trabalho.domains.ValidacaoExceptio;
+import br.pucpr.trabalho.domains.ValidacaoException;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -83,7 +83,7 @@ public class UsuarioController {
             ArrayList<Usuario> lista = ArquivosUsuario.lerLista();
 
             if (ArquivosUsuario.emailExiste(lista, txtEmail.getText() , 0)) {
-                throw new ValidacaoExceptio("Ja existe um usuario com esse email");
+                throw new ValidacaoException("Ja existe um usuario com esse email");
                 
             }
             int id = ArquivosUsuario.proximoId((lista));
@@ -100,7 +100,7 @@ public class UsuarioController {
                 lblMensagem.setText("Erro ao gravar o arquivo de usuario.");
             }
 
-        }catch(ValidacaoExceptio ex) {
+        }catch(ValidacaoException ex) {
             lblMensagem.setText(ex.getMessage());
         }
     }
