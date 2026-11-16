@@ -42,7 +42,7 @@
                 <version>0.0.6</version>
                 <configuration>
                     <!-- classe com o main() -->
-                    <mainClass>br.pucpr.ra3.Programa</mainClass>
+                    <mainClass>br.pucpr.trabalho.Programa</mainClass>
                 </configuration>
             </plugin>
         </plugins>

@@ -33,12 +33,16 @@ public class MainController {
         });
 
 
+        // Comentários e Pagamentos (Tayllor)
+        Button btnComentarioPagamento = new Button("Comentários e Pagamentos");
+        btnComentarioPagamento.setOnAction(event -> new ComentarioPagamentoController().mostrar());
+
         Button btnSair = new Button("Sair");
         btnSair.setOnAction(event->this.stagePrincipal.close());
 
         VBox layout = new VBox(10);
         layout.setStyle("-fx-padding:20; -fx-alignment: center;");
-        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnSair);
+        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnComentarioPagamento, btnSair);
         this.cena = new Scene(layout , 350 , 350 );
     }
 
