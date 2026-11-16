@@ -1,4 +1,3 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.arquivos;
 
 import java.io.File;
@@ -8,36 +7,31 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.List;
 
-/**
- * Guarda uma lista de objetos em arquivo usando serialização.
- * É genérico (T): a mesma classe serve para Comentario, Pagamento etc.
- *
- * Cada operação lê a lista do arquivo, altera e grava de volta.
- */
+// Salva e lê uma lista de objetos em arquivo (serialização)
 public class Repositorio<T extends Identificavel> {
 
-    private final File arquivo;
+    private File arquivo;
 
     public Repositorio(String nomeArquivo) {
-        this.arquivo = new File(nomeArquivo);   // salva na pasta do projeto, igual aos outros .dat do grupo
+        this.arquivo = new File(nomeArquivo);
     }
 
-    /** Lê todos os objetos do arquivo. Se o arquivo ainda não existe, devolve lista vazia. */
     @SuppressWarnings("unchecked")
-    public List<T> listar() throws PersistenciaException {
+    public ArrayList<T> listar() throws PersistenciaException {
         if (!arquivo.exists()) {
             return new ArrayList<>();
         }
-        try (ObjectInputStream entrada = new ObjectInputStream(new FileInputStream(arquivo))) {
-            return (List<T>) entrada.readObject();
+        try {
+            ObjectInputStream entrada = new ObjectInputStream(new FileInputStream(arquivo));
+            ArrayList<T> lista = (ArrayList<T>) entrada.readObject();
+            entrada.close();
+            return lista;
         } catch (IOException | ClassNotFoundException e) {
-            throw new PersistenciaException("Não foi possível ler o arquivo " + arquivo.getName(), e);
+            throw new PersistenciaException("Não foi possível ler o arquivo " + arquivo.getName());
         }
     }
 
-    /** Procura um objeto pelo id. */
     public T buscarPorId(int id) throws PersistenciaException {
         for (T item : listar()) {
             if (item.getId() == id) {
@@ -47,49 +41,50 @@ public class Repositorio<T extends Identificavel> {
         throw new PersistenciaException("Registro " + id + " não encontrado.");
     }
 
-    /** Gera o próximo id (maior id + 1), adiciona o objeto e grava. */
     public void inserir(T item) throws PersistenciaException {
-        List<T> itens = listar();
+        ArrayList<T> lista = listar();
         int maiorId = 0;
-        for (T existente : itens) {
+        for (T existente : lista) {
             if (existente.getId() > maiorId) {
                 maiorId = existente.getId();
             }
         }
         item.setId(maiorId + 1);
-        itens.add(item);
-        gravar(itens);
+        lista.add(item);
+        gravar(lista);
     }
 
-    /** Substitui o objeto que tem o mesmo id. */
     public void atualizar(T item) throws PersistenciaException {
-        List<T> itens = listar();
-        for (int i = 0; i < itens.size(); i++) {
-            if (itens.get(i).getId() == item.getId()) {
-                itens.set(i, item);
-                gravar(itens);
+        ArrayList<T> lista = listar();
+        for (int i = 0; i < lista.size(); i++) {
+            if (lista.get(i).getId() == item.getId()) {
+                lista.set(i, item);
+                gravar(lista);
                 return;
             }
         }
         throw new PersistenciaException("Registro " + item.getId() + " não encontrado.");
     }
 
-    /** Remove o objeto com o id informado. */
     public void excluir(int id) throws PersistenciaException {
-        List<T> itens = listar();
-        boolean removeu = itens.removeIf(item -> item.getId() == id);
-        if (!removeu) {
-            throw new PersistenciaException("Registro " + id + " não encontrado.");
+        ArrayList<T> lista = listar();
+        for (int i = 0; i < lista.size(); i++) {
+            if (lista.get(i).getId() == id) {
+                lista.remove(i);
+                gravar(lista);
+                return;
+            }
         }
-        gravar(itens);
+        throw new PersistenciaException("Registro " + id + " não encontrado.");
     }
 
-    /** Serializa a lista inteira no arquivo. */
-    private void gravar(List<T> itens) throws PersistenciaException {
-        try (ObjectOutputStream saida = new ObjectOutputStream(new FileOutputStream(arquivo))) {
-            saida.writeObject(new ArrayList<>(itens));
+    private void gravar(ArrayList<T> lista) throws PersistenciaException {
+        try {
+            ObjectOutputStream saida = new ObjectOutputStream(new FileOutputStream(arquivo));
+            saida.writeObject(lista);
+            saida.close();
         } catch (IOException e) {
-            throw new PersistenciaException("Não foi possível gravar o arquivo " + arquivo.getName(), e);
+            throw new PersistenciaException("Não foi possível gravar o arquivo " + arquivo.getName());
         }
     }
 }

@@ -1,19 +1,17 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
-import br.pucpr.trabalho.domains.FormaPagamento;
-import br.pucpr.trabalho.domains.Pagamento;
-import br.pucpr.trabalho.domains.StatusPagamento;
-import br.pucpr.trabalho.domains.TipoPerfil;
-import br.pucpr.trabalho.domains.ValidacaoException;
-import br.pucpr.trabalho.arquivos.PersistenciaException;
-import br.pucpr.trabalho.arquivos.Repositorio;
-import br.pucpr.trabalho.controllers.Conversor;
-import br.pucpr.trabalho.domains.Pix;
-import br.pucpr.trabalho.domains.Perfil;
-import br.pucpr.trabalho.domains.Usuario;
 import br.pucpr.trabalho.arquivos.ArquivoPerfil;
 import br.pucpr.trabalho.arquivos.ArquivosUsuario;
+import br.pucpr.trabalho.arquivos.PersistenciaException;
+import br.pucpr.trabalho.arquivos.Repositorio;
+import br.pucpr.trabalho.domains.FormaPagamento;
+import br.pucpr.trabalho.domains.Pagamento;
+import br.pucpr.trabalho.domains.Perfil;
+import br.pucpr.trabalho.domains.Pix;
+import br.pucpr.trabalho.domains.StatusPagamento;
+import br.pucpr.trabalho.domains.TipoPerfil;
+import br.pucpr.trabalho.domains.Usuario;
+import br.pucpr.trabalho.domains.ValidacaoException;
 import com.google.zxing.WriterException;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -35,69 +33,46 @@ import javafx.stage.Stage;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Tela onde o cliente realiza o pagamento de um serviço contratado.
- * O serviço (nome e preço) vem da contratação: o cliente só vê essas informações.
- *
- * PIX: mostra o QR Code e o "copia e cola" com o valor do serviço.
- *      Depois de pagar no app do banco, o cliente clica em "Já paguei" -> PAGO.
- *
- * DINHEIRO: o cliente informa que pagou ao profissional, confirmando se foi o valor
- *      do serviço ou um valor maior -> AGUARDANDO CONFIRMAÇÃO.
- *      Depois o profissional abre o pagamento e confirma (PAGO) ou recusa (volta a PENDENTE).
- *
- * "Pagar depois" registra o pagamento como PENDENTE.
- *
- * O que aparece depende do perfil de quem abre a tela:
- * - CLIENTE: pagar, alterar e excluir (só enquanto PENDENTE).
- * - PROFISSIONAL: confirmar recebimento / não recebi (dinheiro) e estornar. Não altera dados.
- */
+// Se pagamento for null a tela é de inclusão; senão é de consulta
 public class PagamentoFormController {
 
-    private static final int TAMANHO_QR = 220;
-
-    private final Repositorio<Pagamento> repositorio;
-    private final Pagamento pagamento;
-    private final TipoPerfil perfil;
-    private final int contratacaoId;
-    private final int idUsuario;      // usuário cadastrado que está pagando (ligação com Usuario/Perfil)
-    private final String nomeServico;
-    private final BigDecimal valor;   // preço do serviço: vem do Serviço, o usuário não digita
-    private final String txid = Pix.gerarTxid();  // identificador do QR Code exibido nesta tela
+    private Repositorio<Pagamento> repositorio;
+    private Pagamento pagamento;
+    private TipoPerfil perfil;
+    private int contratacaoId;
+    private int idUsuario;
+    private String nomeServico;
+    private BigDecimal valor;
+    private String txid = Pix.gerarTxid();
 
     private Stage stage;
-    private final TextField txtNomePagador = new TextField();
-    private final TextField txtCpfPagador = new TextField();
-    private final TextField txtGorjeta = new TextField();
-    private final Label lblTotal = new Label();
-    private final ComboBox<FormaPagamento> cbForma = new ComboBox<>();
-    private final Button btnPagar = new Button();
+    private TextField txtNomePagador = new TextField();
+    private TextField txtCpfPagador = new TextField();
+    private TextField txtGorjeta = new TextField();
+    private Label lblTotal = new Label();
+    private ComboBox<FormaPagamento> cbForma = new ComboBox<>();
+    private Button btnPagar = new Button();
 
-    // Área do Pix
-    private final VBox areaPix = new VBox(8);
-    private final ImageView imgQrCode = new ImageView();
-    private final TextField txtCopiaECola = new TextField();
-    private final Label lblRecebedor = new Label();
+    private VBox areaPix = new VBox(8);
+    private ImageView imgQrCode = new ImageView();
+    private TextField txtCopiaECola = new TextField();
+    private Label lblRecebedor = new Label();
 
-    // Área do dinheiro
-    private final VBox areaDinheiro = new VBox(8);
-    private final Label lblTotalDinheiro = new Label();
-    private final TextField txtValorPago = new TextField();
-    private final Label lblDiferenca = new Label();
+    private VBox areaDinheiro = new VBox(8);
+    private Label lblTotalDinheiro = new Label();
+    private TextField txtValorPago = new TextField();
+    private Label lblDiferenca = new Label();
 
-    /** Modo inclusão: o usuário escolhido (cliente) paga o serviço da contratação informada. */
     public PagamentoFormController(Repositorio<Pagamento> repositorio, int contratacaoId,
-                             String nomeServico, BigDecimal valorServico, Usuario usuario) {
+                                   String nomeServico, BigDecimal valorServico, Usuario usuario) {
         this.repositorio = repositorio;
-        this.pagamento = null;
-        this.perfil = TipoPerfil.CLIENTE;   // só o cliente realiza pagamento
+        this.perfil = TipoPerfil.CLIENTE;
         this.contratacaoId = contratacaoId;
         this.nomeServico = nomeServico;
         this.valor = valorServico;
         this.idUsuario = usuario.getId();
     }
 
-    /** Modo consulta: abre um pagamento existente, com as ações permitidas ao perfil. */
     public PagamentoFormController(Repositorio<Pagamento> repositorio, Pagamento pagamento, TipoPerfil perfil) {
         this.repositorio = repositorio;
         this.pagamento = pagamento;
@@ -108,49 +83,47 @@ public class PagamentoFormController {
         this.idUsuario = pagamento.getIdUsuario();
     }
 
-    /**
-     * Texto "Nome do usuário – cidade", buscando o Usuario e o Perfil cadastrados
-     * (classes Usuario e Perfil, do cadastro de usuários do grupo).
-     */
+    // "Nome - cidade" usando o cadastro de Usuario e Perfil
     public static String descreverUsuario(int idUsuario) {
         for (Usuario u : ArquivosUsuario.lerLista()) {
             if (u.getId() == idUsuario) {
                 for (Perfil p : ArquivoPerfil.lerLista()) {
                     if (p.getIdUsuario() == idUsuario) {
-                        return u.getNome() + " – " + p.getCidade();
+                        return u.getNome() + " - " + p.getCidade();
                     }
                 }
                 return u.getNome();
             }
         }
-        return idUsuario > 0 ? "usuário #" + idUsuario : "não informado";
+        return "não informado";
     }
 
-    private boolean isInclusao() {
-        return pagamento == null;
-    }
-
-    private boolean isCliente() {
-        return perfil == TipoPerfil.CLIENTE;
-    }
-
-    /** Só o cliente paga, e só se for inclusão ou um pagamento ainda pendente. */
+    // Só o cliente paga, e só se for um pagamento novo ou pendente
     private boolean podePagar() {
-        return isCliente()
-                && (isInclusao() || pagamento.getStatusPagamento() == StatusPagamento.PENDENTE);
+        if (perfil != TipoPerfil.CLIENTE) {
+            return false;
+        }
+        return pagamento == null || pagamento.getStatusPagamento() == StatusPagamento.PENDENTE;
     }
 
     public void mostrar() {
         stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle(isInclusao() ? "Realizar pagamento" : "Pagamento #" + pagamento.getId());
+        if (pagamento == null) {
+            stage.setTitle("Realizar pagamento");
+        } else {
+            stage.setTitle("Pagamento #" + pagamento.getId());
+        }
 
-        configurarCampos();
-
-        // Cabeçalho: serviço e valor (vêm da contratação)
-        Label lblServico = Estilo.titulo("Serviço: " + nomeServico);
-        Label lblValor = new Label("Valor do serviço: " + Conversor.formatarMoeda(valor));
-        Label lblUsuario = new Label("Usuário: " + descreverUsuario(idUsuario));
+        txtNomePagador.setPromptText("Nome completo");
+        txtNomePagador.setPrefColumnCount(20);
+        txtCpfPagador.setPromptText("000.000.000-00");
+        txtGorjeta.setPromptText("0,00");
+        txtGorjeta.textProperty().addListener((obs, antigo, novo) -> atualizarTotal());
+        cbForma.getItems().addAll(FormaPagamento.values());
+        cbForma.setPromptText("Selecione");
+        cbForma.valueProperty().addListener((obs, antigo, novo) -> atualizarAreaPorForma());
+        lblTotal.setStyle("-fx-font-weight: bold;");
 
         GridPane grade = new GridPane();
         grade.setHgap(10);
@@ -160,47 +133,42 @@ public class PagamentoFormController {
         grade.addRow(2, new Label("Gorjeta (opcional):"), txtGorjeta);
         grade.addRow(3, new Label("Forma de pagamento:"), cbForma);
         grade.addRow(4, new Label("Total a pagar:"), lblTotal);
-        txtNomePagador.setPrefColumnCount(20);
-        lblTotal.setStyle("-fx-font-weight: bold;");
 
-        VBox raiz = new VBox(12, lblServico, lblValor, lblUsuario, new Separator(), grade);
+        VBox raiz = new VBox(12,
+                Estilo.titulo("Serviço: " + nomeServico),
+                new Label("Valor do serviço: " + Conversor.formatarMoeda(valor)),
+                new Label("Usuário: " + descreverUsuario(idUsuario)),
+                new Separator(), grade);
 
         if (podePagar()) {
             montarAreaPix();
             montarAreaDinheiro();
-            raiz.getChildren().addAll(areaPix, areaDinheiro);
+            raiz.getChildren().add(areaPix);
+            raiz.getChildren().add(areaDinheiro);
         }
-        if (!isInclusao()) {
+
+        if (pagamento != null) {
             preencherCampos();
-            raiz.getChildren().addAll(new Separator(), criarDetalhes());
-            // Só o cliente altera, e só enquanto estiver pendente
-            boolean editavel = isCliente() && pagamento.podeEditar();
-            txtNomePagador.setDisable(!editavel);
-            txtCpfPagador.setDisable(!editavel);
-            txtGorjeta.setDisable(!editavel);
-            cbForma.setDisable(!editavel);
+            raiz.getChildren().add(new Separator());
+            raiz.getChildren().add(criarDetalhes());
+
+            boolean podeAlterar = perfil == TipoPerfil.CLIENTE && pagamento.podeEditar();
+            txtNomePagador.setDisable(!podeAlterar);
+            txtCpfPagador.setDisable(!podeAlterar);
+            txtGorjeta.setDisable(!podeAlterar);
+            cbForma.setDisable(!podeAlterar);
         }
+
         atualizarTotal();
         raiz.getChildren().add(criarBotoes());
         raiz.setPadding(new Insets(20));
-
         atualizarAreaPorForma();
 
         stage.setScene(new Scene(raiz));
         stage.showAndWait();
     }
 
-    private void configurarCampos() {
-        txtNomePagador.setPromptText("Nome completo");
-        txtCpfPagador.setPromptText("000.000.000-00");
-        txtGorjeta.setPromptText("0,00");
-        txtGorjeta.textProperty().addListener((obs, antigo, novo) -> atualizarTotal());
-        cbForma.getItems().addAll(FormaPagamento.values());
-        cbForma.setPromptText("Selecione");
-        cbForma.valueProperty().addListener((obs, antigo, novo) -> atualizarAreaPorForma());
-    }
-
-    /** Gorjeta digitada: vazio = zero; texto inválido = null (só para o cálculo ao vivo). */
+    // Lê a gorjeta para o cálculo da tela; devolve null se o texto for inválido
     private BigDecimal lerGorjetaOuNull() {
         try {
             return Conversor.paraDecimalOpcional(txtGorjeta.getText(), "Gorjeta");
@@ -209,10 +177,7 @@ public class PagamentoFormController {
         }
     }
 
-    /**
-     * Recalcula o total (serviço + gorjeta) a cada tecla e atualiza tudo que depende dele:
-     * o rótulo do total, o QR Code do Pix e o valor pago sugerido no dinheiro.
-     */
+    // Recalcula o total a cada tecla (atualiza também o QR Code e o valor do dinheiro)
     private void atualizarTotal() {
         BigDecimal gorjeta = lerGorjetaOuNull();
         if (gorjeta == null || gorjeta.compareTo(BigDecimal.ZERO) < 0) {
@@ -231,7 +196,6 @@ public class PagamentoFormController {
         }
     }
 
-    /** QR Code + copia e cola, gerados com o total e a chave Pix do recebedor. */
     private void montarAreaPix() {
         txtCopiaECola.setEditable(false);
         txtCopiaECola.setPrefColumnCount(30);
@@ -244,48 +208,45 @@ public class PagamentoFormController {
             btnCopiar.setText("Copiado!");
         });
 
-        Label lblInstrucao = new Label("Escaneie o QR Code no app do seu banco ou use o Pix copia e cola:");
+        HBox linhaCopiar = new HBox(8, txtCopiaECola, btnCopiar);
+        linhaCopiar.setAlignment(Pos.CENTER);
 
-        HBox copiaECola = new HBox(8, txtCopiaECola, btnCopiar);
-        copiaECola.setAlignment(Pos.CENTER);
-
-        areaPix.getChildren().addAll(new Separator(), lblInstrucao, imgQrCode, copiaECola, lblRecebedor);
+        areaPix.getChildren().addAll(new Separator(),
+                new Label("Escaneie o QR Code no app do seu banco ou use o Pix copia e cola:"),
+                imgQrCode, linhaCopiar, lblRecebedor);
         areaPix.setAlignment(Pos.CENTER);
     }
 
-    /** Gera de novo o código e a imagem do QR Code com o total informado. */
     private void atualizarPix(BigDecimal total) {
         String copiaECola = Pix.gerarCopiaECola(total, txid);
         try {
-            imgQrCode.setImage(QrCode.gerar(copiaECola, TAMANHO_QR));
+            imgQrCode.setImage(QrCode.gerar(copiaECola, 220));
         } catch (WriterException e) {
-            Alertas.erro("Não foi possível gerar o QR Code: " + e.getMessage());
+            Alertas.erro("Não foi possível gerar o QR Code.");
         }
         txtCopiaECola.setText(copiaECola);
-        lblRecebedor.setText("Recebedor: " + Pix.NOME_RECEBEDOR + "  •  " + Conversor.formatarMoeda(total));
+        lblRecebedor.setText("Recebedor: " + Pix.NOME_RECEBEDOR + " | " + Conversor.formatarMoeda(total));
     }
 
-    /** Valor pago em dinheiro: começa com o total; o cliente pode informar um valor maior. */
     private void montarAreaDinheiro() {
-        Label lblInstrucao = new Label("Pague o profissional em mãos e informe abaixo quanto você entregou.");
-
         txtValorPago.setPromptText("Ex.: 150,00");
         txtValorPago.textProperty().addListener((obs, antigo, novo) -> atualizarDiferenca());
-
-        Label lblAviso = new Label("Depois de informar, o profissional precisa confirmar que recebeu.");
 
         HBox linhaValor = new HBox(10, new Label("Valor pago (R$):"), txtValorPago, lblDiferenca);
         linhaValor.setAlignment(Pos.CENTER_LEFT);
 
-        areaDinheiro.getChildren().addAll(new Separator(), lblInstrucao, lblTotalDinheiro, linhaValor, lblAviso);
+        areaDinheiro.getChildren().addAll(new Separator(),
+                new Label("Pague o profissional em mãos e informe abaixo quanto você entregou."),
+                lblTotalDinheiro, linhaValor,
+                new Label("Depois de informar, o profissional precisa confirmar que recebeu."));
     }
 
-    /** Mostra, enquanto o cliente digita, se o valor é exato, a mais ou insuficiente. */
+    // Mostra se o valor pago em dinheiro é exato, maior ou menor que o total
     private void atualizarDiferenca() {
         BigDecimal gorjeta = lerGorjetaOuNull();
         BigDecimal pago;
         try {
-            pago = Conversor.paraDecimal(txtValorPago.getText(), "");
+            pago = Conversor.paraDecimal(txtValorPago.getText(), "Valor pago");
         } catch (ValidacaoException e) {
             lblDiferenca.setText("");
             return;
@@ -295,11 +256,10 @@ public class PagamentoFormController {
             return;
         }
         BigDecimal total = valor.add(gorjeta);
-        int comparacao = pago.compareTo(total);
-        if (comparacao == 0) {
+        if (pago.compareTo(total) == 0) {
             lblDiferenca.setText("Valor exato");
             lblDiferenca.setStyle("-fx-text-fill: green;");
-        } else if (comparacao > 0) {
+        } else if (pago.compareTo(total) > 0) {
             lblDiferenca.setText("Você pagou " + Conversor.formatarMoeda(pago.subtract(total)) + " a mais");
             lblDiferenca.setStyle("-fx-text-fill: blue;");
         } else {
@@ -308,24 +268,24 @@ public class PagamentoFormController {
         }
     }
 
-    /** Mostra só a área da forma escolhida e ajusta o texto do botão principal. */
+    // Mostra só a área da forma escolhida (setManaged false faz a área não ocupar espaço)
     private void atualizarAreaPorForma() {
         FormaPagamento forma = cbForma.getValue();
-        mostrar(areaPix, forma == FormaPagamento.PIX);
-        mostrar(areaDinheiro, forma == FormaPagamento.DINHEIRO);
+        areaPix.setVisible(forma == FormaPagamento.PIX);
+        areaPix.setManaged(forma == FormaPagamento.PIX);
+        areaDinheiro.setVisible(forma == FormaPagamento.DINHEIRO);
+        areaDinheiro.setManaged(forma == FormaPagamento.DINHEIRO);
 
-        btnPagar.setText(forma == FormaPagamento.DINHEIRO ? "Informar pagamento" : "Já paguei");
+        if (forma == FormaPagamento.DINHEIRO) {
+            btnPagar.setText("Informar pagamento");
+        } else {
+            btnPagar.setText("Já paguei");
+        }
         btnPagar.setDisable(forma == null);
 
         if (stage != null && stage.getScene() != null) {
             stage.sizeToScene();
         }
-    }
-
-    /** setVisible esconde; setManaged faz o layout não reservar espaço para o componente. */
-    private void mostrar(VBox area, boolean visivel) {
-        area.setVisible(visivel);
-        area.setManaged(visivel);
     }
 
     private void preencherCampos() {
@@ -337,48 +297,45 @@ public class PagamentoFormController {
         cbForma.setValue(pagamento.getFormaPagamento());
     }
 
-    /** Informações do pagamento já registrado (modo consulta). */
     private GridPane criarDetalhes() {
         GridPane detalhes = new GridPane();
         detalhes.setHgap(10);
         detalhes.setVgap(8);
-        int linha = 0;
+
         Label lblStatus = new Label(pagamento.getStatusPagamento().toString());
         Estilo.corDoStatus(lblStatus, pagamento.getStatusPagamento());
+
+        int linha = 0;
         detalhes.addRow(linha++, new Label("Status:"), lblStatus);
         detalhes.addRow(linha++, new Label("Criado em:"), new Label(Conversor.formatarData(pagamento.getDataCriacao())));
-        if (pagamento.getGorjeta().compareTo(BigDecimal.ZERO) > 0) {
-            detalhes.addRow(linha++, new Label("Gorjeta:"), new Label(Conversor.formatarMoeda(pagamento.getGorjeta())));
-        }
         detalhes.addRow(linha++, new Label("Total:"), new Label(Conversor.formatarMoeda(pagamento.getValorTotal())));
         if (pagamento.getDataPagamento() != null) {
             detalhes.addRow(linha++, new Label("Pago em:"), new Label(Conversor.formatarData(pagamento.getDataPagamento())));
         }
         if (pagamento.getValorPago() != null) {
-            String texto = Conversor.formatarMoeda(pagamento.getValorPago());
-            if (pagamento.getValorExcedente().compareTo(BigDecimal.ZERO) > 0) {
-                texto += "  (" + Conversor.formatarMoeda(pagamento.getValorExcedente()) + " a mais)";
-            }
-            detalhes.addRow(linha++, new Label("Valor pago:"), new Label(texto));
+            detalhes.addRow(linha++, new Label("Valor pago:"), new Label(Conversor.formatarMoeda(pagamento.getValorPago())));
         }
         if (pagamento.getCodigoTransacao() != null) {
-            detalhes.addRow(linha, new Label("Código Pix:"), new Label(pagamento.getCodigoTransacao()));
+            detalhes.addRow(linha++, new Label("Código Pix:"), new Label(pagamento.getCodigoTransacao()));
         }
         return detalhes;
     }
 
-    /** Os botões dependem do perfil, do modo (inclusão/consulta) e do status do pagamento. */
+    // Os botões mudam conforme o perfil (cliente ou profissional) e o status do pagamento
     private VBox criarBotoes() {
         HBox botoes = new HBox(10);
         Label lblAviso = new Label();
-        StatusPagamento status = isInclusao() ? null : pagamento.getStatusPagamento();
+        StatusPagamento status = null;
+        if (pagamento != null) {
+            status = pagamento.getStatusPagamento();
+        }
 
-        if (isCliente()) {
+        if (perfil == TipoPerfil.CLIENTE) {
             if (podePagar()) {
                 btnPagar.setOnAction(e -> pagar());
                 botoes.getChildren().add(btnPagar);
             }
-            if (isInclusao()) {
+            if (pagamento == null) {
                 Button btnDepois = new Button("Pagar depois");
                 btnDepois.setOnAction(e -> pagarDepois());
                 botoes.getChildren().add(btnDepois);
@@ -392,7 +349,6 @@ public class PagamentoFormController {
                 lblAviso.setText("Aguardando o profissional confirmar que recebeu o pagamento.");
             }
         } else {
-            // PROFISSIONAL
             if (status == StatusPagamento.AGUARDANDO_CONFIRMACAO) {
                 Button btnConfirmar = new Button("Confirmar recebimento");
                 btnConfirmar.setOnAction(e -> confirmarRecebimento());
@@ -408,7 +364,7 @@ public class PagamentoFormController {
             }
         }
 
-        Button btnFechar = new Button(isInclusao() ? "Cancelar" : "Fechar");
+        Button btnFechar = new Button("Fechar");
         btnFechar.setOnAction(e -> stage.close());
         botoes.getChildren().add(btnFechar);
 
@@ -419,56 +375,46 @@ public class PagamentoFormController {
         return rodape;
     }
 
-    // ------------------------------------------------------------------
-    // Ações
-    // ------------------------------------------------------------------
-
-    /** Na inclusão cria o pagamento; na consulta usa o pendente, aplicando o que estiver na tela. */
-    private Pagamento obterPagamentoComDadosDaTela() throws ValidacaoException {
-        if (isInclusao()) {
-            // contratacaoId, nomeServico e valor vêm do serviço contratado, não do usuário
+    // Cria o pagamento novo ou aplica os dados da tela no pagamento pendente
+    private Pagamento pegarPagamentoDaTela() throws ValidacaoException {
+        BigDecimal gorjeta = Conversor.paraDecimalOpcional(txtGorjeta.getText(), "Gorjeta");
+        if (pagamento == null) {
             return new Pagamento(contratacaoId, idUsuario, nomeServico, txtNomePagador.getText(),
-                    txtCpfPagador.getText(), valor, lerGorjeta(), cbForma.getValue());
+                    txtCpfPagador.getText(), valor, gorjeta, cbForma.getValue());
         }
-        aplicarCampos();
+        pagamento.setNomePagador(txtNomePagador.getText());
+        pagamento.setCpfPagador(txtCpfPagador.getText());
+        pagamento.setGorjeta(gorjeta);
+        pagamento.setFormaPagamento(cbForma.getValue());
         return pagamento;
     }
 
-    private BigDecimal lerGorjeta() throws ValidacaoException {
-        return Conversor.paraDecimalOpcional(txtGorjeta.getText(), "Gorjeta");
+    private void salvarNoArquivo(Pagamento p) throws PersistenciaException {
+        if (pagamento == null) {
+            repositorio.inserir(p);
+        } else {
+            repositorio.atualizar(p);
+        }
     }
 
-    private void aplicarCampos() throws ValidacaoException {
-        pagamento.setNomePagador(txtNomePagador.getText());
-        pagamento.setCpfPagador(txtCpfPagador.getText());
-        pagamento.setGorjeta(lerGorjeta());
-        pagamento.setFormaPagamento(cbForma.getValue());
-    }
-
-    /** "Já paguei" (Pix) ou "Informar pagamento" (dinheiro). */
     private void pagar() {
         try {
-            Pagamento p = obterPagamentoComDadosDaTela();
+            Pagamento p = pegarPagamentoDaTela();
 
             if (p.getFormaPagamento() == FormaPagamento.PIX) {
                 if (!Alertas.confirmar("Você já fez o Pix de " + Conversor.formatarMoeda(p.getValorTotal()) + " no app do banco?")) {
                     return;
                 }
-                p.pagarComPix(LocalDate.now(), txid);                    // PENDENTE -> PAGO
+                p.pagarComPix(LocalDate.now(), txid);
             } else {
                 BigDecimal valorPago = Conversor.paraDecimal(txtValorPago.getText(), "Valor pago");
-                if (!Alertas.confirmar("Confirma que pagou " + Conversor.formatarMoeda(valorPago)
-                        + " em dinheiro ao profissional?")) {
+                if (!Alertas.confirmar("Confirma que pagou " + Conversor.formatarMoeda(valorPago) + " em dinheiro ao profissional?")) {
                     return;
                 }
-                p.informarPagamentoEmDinheiro(LocalDate.now(), valorPago); // PENDENTE -> AGUARDANDO
+                p.informarPagamentoEmDinheiro(LocalDate.now(), valorPago);
             }
 
-            if (isInclusao()) {
-                repositorio.inserir(p);
-            } else {
-                repositorio.atualizar(p);
-            }
+            salvarNoArquivo(p);
             Alertas.info(montarComprovante(p));
             stage.close();
         } catch (ValidacaoException e) {
@@ -478,11 +424,10 @@ public class PagamentoFormController {
         }
     }
 
-    /** Registra o pagamento como PENDENTE, para pagar depois. */
     private void pagarDepois() {
         try {
-            repositorio.inserir(obterPagamentoComDadosDaTela());
-            Alertas.info("Pagamento registrado como pendente.\nAbra-o na tabela quando for pagar.");
+            salvarNoArquivo(pegarPagamentoDaTela());
+            Alertas.info("Pagamento registrado como pendente.");
             stage.close();
         } catch (ValidacaoException e) {
             Alertas.erro(e.getMessage());
@@ -493,8 +438,7 @@ public class PagamentoFormController {
 
     private void salvarAlteracoes() {
         try {
-            aplicarCampos();
-            repositorio.atualizar(pagamento);
+            salvarNoArquivo(pegarPagamentoDaTela());
             Alertas.info("Pagamento alterado com sucesso!");
             stage.close();
         } catch (ValidacaoException e) {
@@ -505,14 +449,13 @@ public class PagamentoFormController {
     }
 
     private void confirmarRecebimento() {
-        if (!Alertas.confirmar("Confirmar que você (profissional) recebeu "
-                + Conversor.formatarMoeda(pagamento.getValorPago()) + " em dinheiro?")) {
+        if (!Alertas.confirmar("Confirmar que você recebeu " + Conversor.formatarMoeda(pagamento.getValorPago()) + " em dinheiro?")) {
             return;
         }
         try {
-            pagamento.confirmarRecebimento();     // AGUARDANDO -> PAGO
+            pagamento.confirmarRecebimento();
             repositorio.atualizar(pagamento);
-            Alertas.info("Recebimento confirmado. Pagamento concluído!");
+            Alertas.info("Recebimento confirmado!");
             stage.close();
         } catch (ValidacaoException e) {
             Alertas.erro(e.getMessage());
@@ -526,7 +469,7 @@ public class PagamentoFormController {
             return;
         }
         try {
-            pagamento.recusarRecebimento();       // AGUARDANDO -> PENDENTE
+            pagamento.recusarRecebimento();
             repositorio.atualizar(pagamento);
             Alertas.info("Pagamento voltou para pendente.");
             stage.close();
@@ -538,11 +481,11 @@ public class PagamentoFormController {
     }
 
     private void estornar() {
-        if (!Alertas.confirmar("Estornar este pagamento? O valor será devolvido ao cliente e a ação não pode ser desfeita.")) {
+        if (!Alertas.confirmar("Estornar este pagamento? O valor será devolvido ao cliente.")) {
             return;
         }
         try {
-            pagamento.estornar();                  // PAGO -> ESTORNADO
+            pagamento.estornar();
             repositorio.atualizar(pagamento);
             Alertas.info("Pagamento estornado.");
             stage.close();
@@ -558,41 +501,29 @@ public class PagamentoFormController {
             return;
         }
         try {
-            if (!pagamento.podeExcluir()) {
-                throw new ValidacaoException("Só pagamentos pendentes podem ser excluídos.");
-            }
             repositorio.excluir(pagamento.getId());
             Alertas.info("Pagamento excluído.");
             stage.close();
-        } catch (ValidacaoException e) {
-            Alertas.erro(e.getMessage());
         } catch (PersistenciaException e) {
             Alertas.erro("Erro ao excluir: " + e.getMessage());
         }
     }
 
-    /** Texto do comprovante mostrado após o pagamento. */
     private String montarComprovante(Pagamento p) {
-        StringBuilder texto = new StringBuilder();
-        texto.append(p.getStatusPagamento() == StatusPagamento.PAGO
-                ? "Pagamento realizado com sucesso!\n\n"
-                : "Pagamento informado! Aguardando o profissional confirmar o recebimento.\n\n");
-        texto.append("Serviço: ").append(p.getNomeServico()).append('\n');
-        texto.append("Pagador: ").append(p.getNomePagador())
-                .append(" (CPF ").append(Conversor.formatarCpf(p.getCpfPagador())).append(")\n");
-        texto.append("Valor do serviço: ").append(Conversor.formatarMoeda(p.getValor())).append('\n');
-        if (p.getGorjeta().compareTo(BigDecimal.ZERO) > 0) {
-            texto.append("Gorjeta: ").append(Conversor.formatarMoeda(p.getGorjeta())).append('\n');
+        String texto;
+        if (p.getStatusPagamento() == StatusPagamento.PAGO) {
+            texto = "Pagamento realizado com sucesso!\n\n";
+        } else {
+            texto = "Pagamento informado! Aguardando o profissional confirmar.\n\n";
         }
-        texto.append("Total: ").append(Conversor.formatarMoeda(p.getValorTotal())).append('\n');
-        texto.append("Forma: ").append(p.getFormaPagamento()).append('\n');
-        if (p.getValorPago() != null) {
-            texto.append("Valor pago: ").append(Conversor.formatarMoeda(p.getValorPago())).append('\n');
-        }
+        texto += "Serviço: " + p.getNomeServico() + "\n";
+        texto += "Pagador: " + p.getNomePagador() + " (CPF " + Conversor.formatarCpf(p.getCpfPagador()) + ")\n";
+        texto += "Total: " + Conversor.formatarMoeda(p.getValorTotal()) + "\n";
+        texto += "Forma: " + p.getFormaPagamento() + "\n";
         if (p.getCodigoTransacao() != null) {
-            texto.append("Código Pix: ").append(p.getCodigoTransacao()).append('\n');
+            texto += "Código Pix: " + p.getCodigoTransacao() + "\n";
         }
-        texto.append("Data: ").append(Conversor.formatarData(p.getDataPagamento()));
-        return texto.toString();
+        texto += "Data: " + Conversor.formatarData(p.getDataPagamento());
+        return texto;
     }
 }
