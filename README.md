@@ -29,7 +29,7 @@ src/main/java/br/pucpr/ra3/
 |---|---|
 | Lucas Cobucci Babula Alves | Usuario, Perfil |
 | Tayllor Vinicius Martins dos Santos | Comentario, Pagamento |
-| (preencher) | |
+| Lucas Emanuel Alvares Rêgo Maiorquin | Portifolio, Galeria |
 | (preencher) | |
 | (preencher) | |
 
