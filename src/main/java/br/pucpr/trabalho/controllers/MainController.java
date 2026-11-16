@@ -66,8 +66,8 @@ public class MainController {
 
         VBox layout = new VBox(10);
         layout.setStyle("-fx-padding:20; -fx-alignment: center;");
-        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnComentarioPagamento, btnSair);
-        this.cena = new Scene(layout , 350 , 450 );
+        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnComentarioPagamento, btnPortfolio, btnServicos, btnSair);
+        this.cena = new Scene(layout , 350 , 530 );
     }
 
 
