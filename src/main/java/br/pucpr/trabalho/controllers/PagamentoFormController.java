@@ -12,7 +12,6 @@ import br.pucpr.trabalho.domains.StatusPagamento;
 import br.pucpr.trabalho.domains.TipoPerfil;
 import br.pucpr.trabalho.domains.Usuario;
 import br.pucpr.trabalho.domains.ValidacaoException;
-import com.google.zxing.WriterException;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,7 +20,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
@@ -54,8 +52,7 @@ public class PagamentoFormController {
     private Button btnPagar = new Button();
 
     private VBox areaPix = new VBox(8);
-    private ImageView imgQrCode = new ImageView();
-    private TextField txtCopiaECola = new TextField();
+    private TextField txtChavePix = new TextField();
     private Label lblRecebedor = new Label();
 
     private VBox areaDinheiro = new VBox(8);
@@ -197,35 +194,28 @@ public class PagamentoFormController {
     }
 
     private void montarAreaPix() {
-        txtCopiaECola.setEditable(false);
-        txtCopiaECola.setPrefColumnCount(30);
+        txtChavePix.setText(Pix.CHAVE);
+        txtChavePix.setEditable(false);
+        txtChavePix.setPrefColumnCount(22);
 
         Button btnCopiar = new Button("Copiar");
         btnCopiar.setOnAction(e -> {
             ClipboardContent conteudo = new ClipboardContent();
-            conteudo.putString(txtCopiaECola.getText());
+            conteudo.putString(txtChavePix.getText());
             Clipboard.getSystemClipboard().setContent(conteudo);
             btnCopiar.setText("Copiado!");
         });
 
-        HBox linhaCopiar = new HBox(8, txtCopiaECola, btnCopiar);
-        linhaCopiar.setAlignment(Pos.CENTER);
+        HBox linhaChave = new HBox(8, new Label("Chave Pix:"), txtChavePix, btnCopiar);
+        linhaChave.setAlignment(Pos.CENTER_LEFT);
 
         areaPix.getChildren().addAll(new Separator(),
-                new Label("Escaneie o QR Code no app do seu banco ou use o Pix copia e cola:"),
-                imgQrCode, linhaCopiar, lblRecebedor);
-        areaPix.setAlignment(Pos.CENTER);
+                new Label("Faça um Pix para a chave abaixo pelo app do seu banco:"),
+                linhaChave, lblRecebedor);
     }
 
     private void atualizarPix(BigDecimal total) {
-        String copiaECola = Pix.gerarCopiaECola(total, txid);
-        try {
-            imgQrCode.setImage(QrCode.gerar(copiaECola, 220));
-        } catch (WriterException e) {
-            Alertas.erro("Não foi possível gerar o QR Code.");
-        }
-        txtCopiaECola.setText(copiaECola);
-        lblRecebedor.setText("Recebedor: " + Pix.NOME_RECEBEDOR + " | " + Conversor.formatarMoeda(total));
+        lblRecebedor.setText("Recebedor: " + Pix.NOME_RECEBEDOR + " | Valor: " + Conversor.formatarMoeda(total));
     }
 
     private void montarAreaDinheiro() {
