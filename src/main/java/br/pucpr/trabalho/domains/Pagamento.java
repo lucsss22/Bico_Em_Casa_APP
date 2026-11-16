@@ -1,4 +1,3 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.domains;
 
 import br.pucpr.trabalho.arquivos.Identificavel;
@@ -6,52 +5,31 @@ import br.pucpr.trabalho.arquivos.Identificavel;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Pagamento de um serviço contratado, feito pelo cliente ao profissional.
- *
- * Fluxo de status:
- *
- *   PIX:       PENDENTE --pagarComPix()--> PAGO
- *
- *   DINHEIRO:  PENDENTE --informarPagamentoEmDinheiro()--> AGUARDANDO_CONFIRMACAO
- *              AGUARDANDO_CONFIRMACAO --confirmarRecebimento()--> PAGO      (profissional recebeu)
- *              AGUARDANDO_CONFIRMACAO --recusarRecebimento()----> PENDENTE  (profissional não recebeu)
- *
- *   Qualquer:  PAGO --estornar()--> ESTORNADO (final, fica como histórico)
- *
- * Regras:
- * - Todo pagamento nasce PENDENTE.
- * - Só um pagamento PENDENTE pode ter os dados alterados ou ser excluído.
- * - Em dinheiro, o cliente não pode informar que pagou menos que o valor do serviço
- *   (pode pagar a mais, por exemplo uma gorjeta).
- */
 public class Pagamento implements Identificavel {
 
     private static final long serialVersionUID = 1L;
 
     private int id;
-    private int contratacaoId;       // vem da Contratação, não aparece para o usuário
-    private String nomeServico;      // vem do Serviço contratado, só é exibido
-    private String nomePagador;      // quem está pagando (nem sempre é o cliente)
-    private String cpfPagador;       // guardado só com os 11 dígitos, sem pontos e traço
-    private BigDecimal valor;        // preço do serviço
-    private BigDecimal gorjeta;      // opcional, escolhida pelo cliente (zero se não der gorjeta)
+    private int contratacaoId;
+    private int idUsuario;
+    private String nomeServico;
+    private String nomePagador;
+    private String cpfPagador;
+    private BigDecimal valor;
+    private BigDecimal gorjeta;
     private FormaPagamento formaPagamento;
     private StatusPagamento statusPagamento;
     private LocalDate dataCriacao;
-    private LocalDate dataPagamento;     // quando o cliente pagou
-    private BigDecimal valorPago;        // dinheiro: quanto o cliente diz que entregou ao profissional
-    private String codigoTransacao;      // pix: identificador (txid) do QR Code pago
+    private LocalDate dataPagamento;
+    private BigDecimal valorPago;
+    private String codigoTransacao;
 
-    /**
-     * Cria um pagamento novo, sempre PENDENTE.
-     * Cada setter valida o seu campo; se algum falhar, o objeto não é criado.
-     */
-    public Pagamento(int contratacaoId, String nomeServico, String nomePagador, String cpfPagador,
+    public Pagamento(int contratacaoId, int idUsuario, String nomeServico, String nomePagador, String cpfPagador,
                      BigDecimal valor, BigDecimal gorjeta, FormaPagamento formaPagamento) throws ValidacaoException {
         this.statusPagamento = StatusPagamento.PENDENTE;
         this.dataCriacao = LocalDate.now();
         setContratacaoId(contratacaoId);
+        setIdUsuario(idUsuario);
         setNomeServico(nomeServico);
         setNomePagador(nomePagador);
         setCpfPagador(cpfPagador);
@@ -60,36 +38,32 @@ public class Pagamento implements Identificavel {
         setFormaPagamento(formaPagamento);
     }
 
-    /** Total que o cliente paga: valor do serviço + gorjeta. */
     public BigDecimal getValorTotal() {
         return valor.add(getGorjeta());
     }
 
-    // ------------------------------------------------------------------
-    // Fluxo de status
-    // ------------------------------------------------------------------
-
-    /** PIX: o cliente pagou o QR Code. PENDENTE -> PAGO. */
+    // Pix: PENDENTE -> PAGO
     public void pagarComPix(LocalDate data, String txid) throws ValidacaoException {
-        verificarStatus(StatusPagamento.PENDENTE, "Só é possível pagar um pagamento pendente.");
+        if (statusPagamento != StatusPagamento.PENDENTE) {
+            throw new ValidacaoException("Só é possível pagar um pagamento pendente.");
+        }
         if (formaPagamento != FormaPagamento.PIX) {
             throw new ValidacaoException("Este pagamento não é por Pix.");
         }
-        if (txid == null || !txid.matches("[A-Za-z0-9]{1,25}")) {
+        if (txid == null || txid.isBlank() || txid.length() > 25) {
             throw new ValidacaoException("Código da transação Pix inválido.");
         }
-        validarDataPagamento(data);
+        validarData(data);
         this.codigoTransacao = txid;
         this.dataPagamento = data;
         this.statusPagamento = StatusPagamento.PAGO;
     }
 
-    /**
-     * DINHEIRO: o cliente informa que pagou ao profissional.
-     * PENDENTE -> AGUARDANDO_CONFIRMACAO (o profissional ainda precisa confirmar).
-     */
+    // Dinheiro: PENDENTE -> AGUARDANDO_CONFIRMACAO
     public void informarPagamentoEmDinheiro(LocalDate data, BigDecimal valorPago) throws ValidacaoException {
-        verificarStatus(StatusPagamento.PENDENTE, "Só é possível informar o pagamento de um pagamento pendente.");
+        if (statusPagamento != StatusPagamento.PENDENTE) {
+            throw new ValidacaoException("Só é possível informar o pagamento de um pagamento pendente.");
+        }
         if (formaPagamento != FormaPagamento.DINHEIRO) {
             throw new ValidacaoException("Este pagamento não é em dinheiro.");
         }
@@ -100,56 +74,53 @@ public class Pagamento implements Identificavel {
             throw new ValidacaoException("O valor pago pode ter no máximo 2 casas decimais.");
         }
         if (valorPago.compareTo(getValorTotal()) < 0) {
-            throw new ValidacaoException("O valor pago não pode ser menor que o total ("
-                    + "serviço + gorjeta).");
+            throw new ValidacaoException("O valor pago não pode ser menor que o total (serviço + gorjeta).");
         }
-        validarDataPagamento(data);
+        validarData(data);
         this.valorPago = valorPago;
         this.dataPagamento = data;
         this.statusPagamento = StatusPagamento.AGUARDANDO_CONFIRMACAO;
     }
 
-    /** DINHEIRO: o profissional confirma que recebeu. AGUARDANDO_CONFIRMACAO -> PAGO. */
+    // Profissional confirma: AGUARDANDO_CONFIRMACAO -> PAGO
     public void confirmarRecebimento() throws ValidacaoException {
-        verificarStatus(StatusPagamento.AGUARDANDO_CONFIRMACAO,
-                "Só é possível confirmar o recebimento de um pagamento aguardando confirmação.");
+        if (statusPagamento != StatusPagamento.AGUARDANDO_CONFIRMACAO) {
+            throw new ValidacaoException("Este pagamento não está aguardando confirmação.");
+        }
         this.statusPagamento = StatusPagamento.PAGO;
     }
 
-    /** DINHEIRO: o profissional diz que não recebeu. AGUARDANDO_CONFIRMACAO -> PENDENTE. */
+    // Profissional não recebeu: AGUARDANDO_CONFIRMACAO -> PENDENTE
     public void recusarRecebimento() throws ValidacaoException {
-        verificarStatus(StatusPagamento.AGUARDANDO_CONFIRMACAO,
-                "Só é possível recusar um pagamento aguardando confirmação.");
+        if (statusPagamento != StatusPagamento.AGUARDANDO_CONFIRMACAO) {
+            throw new ValidacaoException("Este pagamento não está aguardando confirmação.");
+        }
         this.valorPago = null;
         this.dataPagamento = null;
         this.statusPagamento = StatusPagamento.PENDENTE;
     }
 
-    /** Estorna (devolve) o pagamento: PAGO -> ESTORNADO. */
+    // PAGO -> ESTORNADO
     public void estornar() throws ValidacaoException {
-        verificarStatus(StatusPagamento.PAGO, "Só é possível estornar um pagamento que já foi pago.");
+        if (statusPagamento != StatusPagamento.PAGO) {
+            throw new ValidacaoException("Só é possível estornar um pagamento que já foi pago.");
+        }
         this.statusPagamento = StatusPagamento.ESTORNADO;
     }
 
-    /** Só pagamento pendente pode ter os dados alterados. */
     public boolean podeEditar() {
         return statusPagamento == StatusPagamento.PENDENTE;
     }
 
-    /** Só pagamento pendente pode ser excluído (pago precisa ser estornado; estornado fica de histórico). */
     public boolean podeExcluir() {
         return statusPagamento == StatusPagamento.PENDENTE;
     }
 
-    /** Quanto o cliente pagou em dinheiro além do total (serviço + gorjeta); null se não se aplica. */
     public BigDecimal getValorExcedente() {
-        return valorPago == null ? null : valorPago.subtract(getValorTotal());
-    }
-
-    private void verificarStatus(StatusPagamento esperado, String mensagem) throws ValidacaoException {
-        if (statusPagamento != esperado) {
-            throw new ValidacaoException(mensagem);
+        if (valorPago == null) {
+            return null;
         }
+        return valorPago.subtract(getValorTotal());
     }
 
     private void verificarEditavel() throws ValidacaoException {
@@ -158,7 +129,7 @@ public class Pagamento implements Identificavel {
         }
     }
 
-    private void validarDataPagamento(LocalDate data) throws ValidacaoException {
+    private void validarData(LocalDate data) throws ValidacaoException {
         if (data == null) {
             throw new ValidacaoException("Informe a data do pagamento.");
         }
@@ -169,10 +140,6 @@ public class Pagamento implements Identificavel {
             throw new ValidacaoException("A data do pagamento não pode estar no futuro.");
         }
     }
-
-    // ------------------------------------------------------------------
-    // Getters e setters
-    // ------------------------------------------------------------------
 
     @Override
     public int getId() {
@@ -195,6 +162,17 @@ public class Pagamento implements Identificavel {
         this.contratacaoId = contratacaoId;
     }
 
+    public int getIdUsuario() {
+        return idUsuario;
+    }
+
+    public void setIdUsuario(int idUsuario) throws ValidacaoException {
+        if (idUsuario <= 0) {
+            throw new ValidacaoException("Selecione o usuário que está realizando o pagamento.");
+        }
+        this.idUsuario = idUsuario;
+    }
+
     public String getNomeServico() {
         return nomeServico;
     }
@@ -215,51 +193,61 @@ public class Pagamento implements Identificavel {
         if (nomePagador == null || nomePagador.isBlank()) {
             throw new ValidacaoException("Informe o nome do pagador.");
         }
-        if (nomePagador.trim().length() < 3) {
+        nomePagador = nomePagador.trim();
+        if (nomePagador.length() < 3) {
             throw new ValidacaoException("O nome do pagador deve ter pelo menos 3 letras.");
         }
-        if (!nomePagador.trim().matches("[\\p{L} '.-]+")) {
-            throw new ValidacaoException("O nome do pagador deve conter apenas letras.");
+        for (int i = 0; i < nomePagador.length(); i++) {
+            char c = nomePagador.charAt(i);
+            if (!Character.isLetter(c) && c != ' ') {
+                throw new ValidacaoException("O nome do pagador deve conter apenas letras.");
+            }
         }
-        this.nomePagador = nomePagador.trim();
+        this.nomePagador = nomePagador;
     }
 
     public String getCpfPagador() {
         return cpfPagador;
     }
 
-    /** Aceita o CPF com ou sem pontuação (529.982.247-25 ou 52998224725) e guarda só os dígitos. */
+    // Aceita com ou sem pontuação e guarda só os 11 números
     public void setCpfPagador(String cpfPagador) throws ValidacaoException {
         verificarEditavel();
         if (cpfPagador == null || cpfPagador.isBlank()) {
             throw new ValidacaoException("Informe o CPF do pagador.");
         }
-        String digitos = cpfPagador.replaceAll("[.\\-\\s]", "");
-        if (!digitos.matches("\\d{11}")) {
+        String cpf = cpfPagador.replace(".", "").replace("-", "").trim();
+        if (cpf.length() != 11) {
             throw new ValidacaoException("O CPF deve ter 11 números (ex.: 529.982.247-25).");
         }
-        if (!cpfValido(digitos)) {
+        for (int i = 0; i < cpf.length(); i++) {
+            if (!Character.isDigit(cpf.charAt(i))) {
+                throw new ValidacaoException("O CPF deve ter 11 números (ex.: 529.982.247-25).");
+            }
+        }
+        if (!cpfValido(cpf)) {
             throw new ValidacaoException("CPF inválido.");
         }
-        this.cpfPagador = digitos;
+        this.cpfPagador = cpf;
     }
 
-    /**
-     * Confere os 2 dígitos verificadores do CPF (algoritmo da Receita Federal).
-     * 1º dígito: soma dos 9 primeiros × pesos 10..2; resto da divisão por 11;
-     *            se o resto for menor que 2 o dígito é 0, senão é 11 - resto.
-     * 2º dígito: mesma conta com os 10 primeiros × pesos 11..2.
-     */
-    private static boolean cpfValido(String cpf) {
-        // CPFs com todos os dígitos iguais (111.111.111-11) passam na conta, mas são inválidos
-        if (cpf.chars().distinct().count() == 1) {
+    // Confere os 2 dígitos verificadores do CPF
+    private boolean cpfValido(String cpf) {
+        boolean todosIguais = true;
+        for (int i = 1; i < 11; i++) {
+            if (cpf.charAt(i) != cpf.charAt(0)) {
+                todosIguais = false;
+            }
+        }
+        if (todosIguais) {
             return false;
         }
-        return calcularDigitoCpf(cpf, 9) == cpf.charAt(9) - '0'
-                && calcularDigitoCpf(cpf, 10) == cpf.charAt(10) - '0';
+        int digito1 = calcularDigito(cpf, 9);
+        int digito2 = calcularDigito(cpf, 10);
+        return digito1 == cpf.charAt(9) - '0' && digito2 == cpf.charAt(10) - '0';
     }
 
-    private static int calcularDigitoCpf(String cpf, int quantidade) {
+    private int calcularDigito(String cpf, int quantidade) {
         int soma = 0;
         int peso = quantidade + 1;
         for (int i = 0; i < quantidade; i++) {
@@ -267,7 +255,10 @@ public class Pagamento implements Identificavel {
             peso--;
         }
         int resto = soma % 11;
-        return resto < 2 ? 0 : 11 - resto;
+        if (resto < 2) {
+            return 0;
+        }
+        return 11 - resto;
     }
 
     public BigDecimal getValor() {
@@ -276,7 +267,6 @@ public class Pagamento implements Identificavel {
 
     public void setValor(BigDecimal valor) throws ValidacaoException {
         verificarEditavel();
-        // Testa o null antes: chamar compareTo em null daria NullPointerException
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidacaoException("O valor deve ser maior que zero.");
         }
@@ -286,16 +276,14 @@ public class Pagamento implements Identificavel {
         this.valor = valor;
     }
 
-    /** Pagamentos salvos antes de existir a gorjeta voltam com null: tratamos como zero. */
     public BigDecimal getGorjeta() {
-        return gorjeta == null ? BigDecimal.ZERO : gorjeta;
+        if (gorjeta == null) {
+            return BigDecimal.ZERO;
+        }
+        return gorjeta;
     }
 
-    /**
-     * Gorjeta é opcional: null vira zero.
-     * Não pode ser negativa e, para evitar erro de digitação (ex.: 1500 em vez de 15,00),
-     * não pode passar do valor do serviço.
-     */
+    // Gorjeta é opcional: vazio vale zero
     public void setGorjeta(BigDecimal gorjeta) throws ValidacaoException {
         verificarEditavel();
         if (gorjeta == null) {

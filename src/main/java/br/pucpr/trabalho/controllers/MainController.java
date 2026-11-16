@@ -33,6 +33,24 @@ public class MainController {
         });
 
 
+        Button btnConsultarUsuario = new Button("Consultar Usuarios");
+        btnConsultarUsuario.setOnAction(event -> {
+            UsuarioConsultaController controller = new UsuarioConsultaController(this.stagePrincipal, this);
+            controller.mostrar();
+        });
+
+        Button btnIncluirPerfil = new Button("Incluir Perfil");
+        btnIncluirPerfil.setOnAction(event -> {
+            PerfilController controller = new PerfilController(this.stagePrincipal, this);
+            controller.mostrar();
+        });
+
+        Button btnConsultarPerfil = new Button("Consultar Perfis");
+        btnConsultarPerfil.setOnAction(event -> {
+            PerfilConsultaController controller = new PerfilConsultaController(this.stagePrincipal, this);
+            controller.mostrar();
+        });
+
         // Comentários e Pagamentos (Tayllor)
         Button btnComentarioPagamento = new Button("Comentários e Pagamentos");
         btnComentarioPagamento.setOnAction(event -> new ComentarioPagamentoController().mostrar());
@@ -48,8 +66,8 @@ public class MainController {
 
         VBox layout = new VBox(10);
         layout.setStyle("-fx-padding:20; -fx-alignment: center;");
-        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnComentarioPagamento, btnPortfolio, btnServicos, btnSair);
-        this.cena = new Scene(layout , 350 , 420 );
+        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnComentarioPagamento, btnSair);
+        this.cena = new Scene(layout , 350 , 450 );
     }
 
 
