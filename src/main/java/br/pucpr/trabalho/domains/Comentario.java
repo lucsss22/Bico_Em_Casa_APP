@@ -1,34 +1,23 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.domains;
 
 import br.pucpr.trabalho.arquivos.Identificavel;
 
 import java.time.LocalDate;
 
-/**
- * Comentário que o cliente escreve no momento da contratação,
- * explicando o que deseja que o profissional faça.
- */
 public class Comentario implements Identificavel {
 
     private static final long serialVersionUID = 1L;
-    public static final int TAMANHO_MAXIMO_TEXTO = 1000;
 
     private int id;
-    private int contratacaoId;       // vem da Contratação, não aparece para o usuário
-    private String nomeServico;      // vem do Serviço contratado, só é exibido
-    private String autor;            // nome ou apelido de como o cliente prefere ser chamado
+    private int contratacaoId;
+    private String nomeServico;
+    private String autor;
     private String texto;
     private LocalDate dataDesejada;
     private Periodo periodo;
     private boolean urgente;
     private LocalDate dataCriacao;
 
-    /**
-     * Cria um comentário novo. Os setters validam cada campo.
-     * contratacaoId e nomeServico são preenchidos pelo sistema (a partir da contratação),
-     * os demais pelo usuário.
-     */
     public Comentario(int contratacaoId, String nomeServico, String autor, String texto,
                       LocalDate dataDesejada, Periodo periodo, boolean urgente) throws ValidacaoException {
         this.dataCriacao = LocalDate.now();
@@ -92,9 +81,8 @@ public class Comentario implements Identificavel {
         if (texto == null || texto.isBlank()) {
             throw new ValidacaoException("O comentário não pode ficar vazio.");
         }
-        if (texto.length() > TAMANHO_MAXIMO_TEXTO) {
-            throw new ValidacaoException("O comentário pode ter no máximo "
-                    + TAMANHO_MAXIMO_TEXTO + " caracteres.");
+        if (texto.length() > 1000) {
+            throw new ValidacaoException("O comentário pode ter no máximo 1000 caracteres.");
         }
         this.texto = texto.trim();
     }
@@ -124,7 +112,6 @@ public class Comentario implements Identificavel {
         this.periodo = periodo;
     }
 
-    /** Indica se o cliente precisa do serviço com urgência. */
     public boolean isUrgente() {
         return urgente;
     }

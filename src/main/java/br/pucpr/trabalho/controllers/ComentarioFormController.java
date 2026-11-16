@@ -1,12 +1,10 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
+import br.pucpr.trabalho.arquivos.PersistenciaException;
+import br.pucpr.trabalho.arquivos.Repositorio;
 import br.pucpr.trabalho.domains.Comentario;
 import br.pucpr.trabalho.domains.Periodo;
 import br.pucpr.trabalho.domains.ValidacaoException;
-import br.pucpr.trabalho.arquivos.PersistenciaException;
-import br.pucpr.trabalho.arquivos.Repositorio;
-import br.pucpr.trabalho.controllers.Conversor;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -24,38 +22,27 @@ import javafx.stage.Stage;
 
 import java.time.LocalDate;
 
-/**
- * Formulário do comentário. Funciona em dois modos:
- * - Inclusão: recebe a contratação (id + nome do serviço); os campos vêm vazios.
- * - Consulta: recebe um comentário; os campos vêm preenchidos
- *   e aparecem os botões para alterar e excluir.
- *
- * O id da contratação nunca aparece para o usuário: ele vem da tela de Contratação.
- * O nome do serviço aparece apenas como informação (não é editável).
- */
+// Se comentario for null a tela é de inclusão; senão é de consulta (alterar/excluir)
 public class ComentarioFormController {
 
-    private final Repositorio<Comentario> repositorio;
-    private final Comentario comentario;
-    private final int contratacaoId;
-    private final String nomeServico;
+    private Repositorio<Comentario> repositorio;
+    private Comentario comentario;
+    private int contratacaoId;
+    private String nomeServico;
 
     private Stage stage;
-    private final TextField txtAutor = new TextField();
-    private final TextField txtData = new TextField();
-    private final ComboBox<Periodo> cbPeriodo = new ComboBox<>();
-    private final CheckBox chkUrgente = new CheckBox("Preciso do serviço com urgência");
-    private final TextArea txtTexto = new TextArea();
+    private TextField txtAutor = new TextField();
+    private TextField txtData = new TextField();
+    private ComboBox<Periodo> cbPeriodo = new ComboBox<>();
+    private CheckBox chkUrgente = new CheckBox("Preciso do serviço com urgência");
+    private TextArea txtTexto = new TextArea();
 
-    /** Modo inclusão: novo comentário para a contratação informada. */
     public ComentarioFormController(Repositorio<Comentario> repositorio, int contratacaoId, String nomeServico) {
         this.repositorio = repositorio;
-        this.comentario = null;
         this.contratacaoId = contratacaoId;
         this.nomeServico = nomeServico;
     }
 
-    /** Modo consulta: abre um comentário existente para alterar ou excluir. */
     public ComentarioFormController(Repositorio<Comentario> repositorio, Comentario comentario) {
         this.repositorio = repositorio;
         this.comentario = comentario;
@@ -63,23 +50,22 @@ public class ComentarioFormController {
         this.nomeServico = comentario.getNomeServico();
     }
 
-    private boolean isInclusao() {
-        return comentario == null;
-    }
-
     public void mostrar() {
         stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle(isInclusao() ? "Novo comentário" : "Consultar comentário #" + comentario.getId());
+        if (comentario == null) {
+            stage.setTitle("Novo comentário");
+        } else {
+            stage.setTitle("Consultar comentário #" + comentario.getId());
+        }
 
         txtAutor.setPromptText("Seu nome ou apelido");
         txtData.setPromptText("DD/MM/AAAA");
         cbPeriodo.getItems().addAll(Periodo.values());
+        cbPeriodo.setPromptText("Selecione");
         txtTexto.setWrapText(true);
         txtTexto.setPrefRowCount(5);
-        txtTexto.setPromptText("Descreva o que você precisa que o profissional faça...");
-
-        Label titulo = Estilo.titulo("Serviço: " + nomeServico);
+        txtTexto.setPrefColumnCount(30);
 
         GridPane grade = new GridPane();
         grade.setHgap(10);
@@ -89,10 +75,8 @@ public class ComentarioFormController {
         grade.addRow(2, new Label("Período:"), cbPeriodo);
         grade.addRow(3, new Label("Urgente:"), chkUrgente);
         grade.addRow(4, new Label("Comentário:"), txtTexto);
-        cbPeriodo.setPromptText("Selecione");
-        txtTexto.setPrefColumnCount(30);
 
-        Button btnSalvar = new Button(isInclusao() ? "Cadastrar" : "Salvar alterações");
+        Button btnSalvar = new Button("Cadastrar");
         btnSalvar.setOnAction(e -> salvar());
 
         Button btnCancelar = new Button("Cancelar");
@@ -100,17 +84,17 @@ public class ComentarioFormController {
 
         HBox botoes = new HBox(10, btnSalvar);
 
-        if (!isInclusao()) {
+        if (comentario != null) {
             preencherCampos();
             grade.addRow(5, new Label("Criado em:"), new Label(Conversor.formatarData(comentario.getDataCriacao())));
-
+            btnSalvar.setText("Salvar alterações");
             Button btnExcluir = new Button("Excluir");
             btnExcluir.setOnAction(e -> excluir());
             botoes.getChildren().add(btnExcluir);
         }
         botoes.getChildren().add(btnCancelar);
 
-        VBox raiz = new VBox(15, titulo, new Separator(), grade, botoes);
+        VBox raiz = new VBox(15, Estilo.titulo("Serviço: " + nomeServico), new Separator(), grade, botoes);
         raiz.setPadding(new Insets(20));
 
         stage.setScene(new Scene(raiz));
@@ -128,9 +112,7 @@ public class ComentarioFormController {
     private void salvar() {
         try {
             LocalDate data = Conversor.paraData(txtData.getText(), "Data desejada");
-
-            if (isInclusao()) {
-                // contratacaoId e nomeServico vêm da contratação, não do que o usuário digitou
+            if (comentario == null) {
                 Comentario novo = new Comentario(contratacaoId, nomeServico, txtAutor.getText(),
                         txtTexto.getText(), data, cbPeriodo.getValue(), chkUrgente.isSelected());
                 repositorio.inserir(novo);

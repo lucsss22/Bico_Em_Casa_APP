@@ -1,10 +1,8 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
-import br.pucpr.trabalho.domains.Comentario;
 import br.pucpr.trabalho.arquivos.PersistenciaException;
 import br.pucpr.trabalho.arquivos.Repositorio;
-import br.pucpr.trabalho.controllers.Conversor;
+import br.pucpr.trabalho.domains.Comentario;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -16,27 +14,16 @@ import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
-import java.util.List;
 
-/**
- * Tela de consulta: mostra em uma tabela os comentários de uma contratação.
- * A partir dela o usuário cadastra um novo ou abre um existente
- * para alterar ou excluir.
- *
- * Quem abre esta tela (a tela de Contratação) informa o id da contratação
- * e o nome do serviço contratado.
- */
 public class ComentarioListaController {
 
-    private final Repositorio<Comentario> repositorio = new Repositorio<>("comentarios.dat");
-    private final TableView<Comentario> tabela = new TableView<>();
-    private final int contratacaoId;
-    private final String nomeServico;
+    private Repositorio<Comentario> repositorio = new Repositorio<>("comentarios.dat");
+    private TableView<Comentario> tabela = new TableView<>();
+    private int contratacaoId;
+    private String nomeServico;
 
     public ComentarioListaController(int contratacaoId, String nomeServico) {
         this.contratacaoId = contratacaoId;
@@ -47,8 +34,7 @@ public class ComentarioListaController {
         Stage stage = new Stage();
         stage.setTitle("Comentários");
 
-        Label titulo = new Label("Comentários – " + nomeServico);
-        titulo.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        Label titulo = Estilo.titulo("Comentários - " + nomeServico);
 
         montarTabela();
 
@@ -79,8 +65,6 @@ public class ComentarioListaController {
     private void montarTabela() {
         TableColumn<Comentario, String> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getId())));
-        colId.setPrefWidth(50);
-
 
         TableColumn<Comentario, String> colAutor = new TableColumn<>("Chamar de");
         colAutor.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getAutor()));
@@ -98,11 +82,15 @@ public class ComentarioListaController {
         colTexto.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTexto()));
         colTexto.setPrefWidth(300);
 
-        tabela.getColumns().addAll(List.of(colId, colAutor, colData, colPeriodo, colUrgente, colTexto));
+        tabela.getColumns().add(colId);
+        tabela.getColumns().add(colAutor);
+        tabela.getColumns().add(colData);
+        tabela.getColumns().add(colPeriodo);
+        tabela.getColumns().add(colUrgente);
+        tabela.getColumns().add(colTexto);
         tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         tabela.setPlaceholder(new Label("Nenhum comentário cadastrado."));
 
-        // Clique duplo na linha também abre a consulta
         tabela.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
                 consultarSelecionado();
@@ -110,16 +98,16 @@ public class ComentarioListaController {
         });
     }
 
+    // Mostra só os comentários desta contratação
     private void carregarTabela() {
         try {
-            // Mostra apenas os comentários desta contratação
-            List<Comentario> daContratacao = new ArrayList<>();
+            ArrayList<Comentario> lista = new ArrayList<>();
             for (Comentario c : repositorio.listar()) {
                 if (c.getContratacaoId() == contratacaoId) {
-                    daContratacao.add(c);
+                    lista.add(c);
                 }
             }
-            tabela.setItems(FXCollections.observableArrayList(daContratacao));
+            tabela.setItems(FXCollections.observableArrayList(lista));
         } catch (PersistenciaException e) {
             Alertas.erro(e.getMessage());
         }
