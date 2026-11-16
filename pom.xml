@@ -21,12 +21,6 @@
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        <!-- Gera a imagem do QR Code do Pix (Pagamento) -->
-        <dependency>
-            <groupId>com.google.zxing</groupId>
-            <artifactId>core</artifactId>
-            <version>3.5.3</version>
-        </dependency>
     </dependencies>
 
     <build>
