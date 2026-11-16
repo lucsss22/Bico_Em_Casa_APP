@@ -55,6 +55,12 @@ public class MainController {
         Button btnComentarioPagamento = new Button("Comentários e Pagamentos");
         btnComentarioPagamento.setOnAction(event -> new ComentarioPagamentoController().mostrar());
 
+        Button btnPortfolio = new Button("Portfólio");
+        btnPortfolio.setOnAction(event -> new PortfolioController(this.stagePrincipal).mostrar());
+
+        Button btnServicos = new Button("Serviços realizados");
+        btnServicos.setOnAction(event -> new ServicoController(this.stagePrincipal).mostrar());
+
         Button btnSair = new Button("Sair");
         btnSair.setOnAction(event->this.stagePrincipal.close());
 
