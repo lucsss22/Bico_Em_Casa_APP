@@ -28,7 +28,7 @@ src/main/java/br/pucpr/ra3/
 | Integrante | Classes (domínio, arquivo, controllers) |
 |---|---|
 | Lucas Cobucci Babula Alves | Usuario, Perfil |
-| (preencher) | |
+| Tayllor Vinicius Martins dos Santos | Comentario, Pagamento |
 | (preencher) | |
 | (preencher) | |
 | (preencher) | |
