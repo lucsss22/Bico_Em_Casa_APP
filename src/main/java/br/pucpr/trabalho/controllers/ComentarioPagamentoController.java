@@ -1,6 +1,10 @@
 package br.pucpr.trabalho.controllers;
 
 import br.pucpr.trabalho.arquivos.ArquivosUsuario;
+import br.pucpr.trabalho.arquivos.PersistenciaException;
+import br.pucpr.trabalho.arquivos.Repositorio;
+import br.pucpr.trabalho.domains.Contratacao;
+import br.pucpr.trabalho.domains.Servico;
 import br.pucpr.trabalho.domains.TipoPerfil;
 import br.pucpr.trabalho.domains.Usuario;
 import javafx.geometry.Insets;
@@ -15,35 +19,60 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ComentarioPagamentoController {
 
-    // Provisório: simula contratações até a tela de Contratação ficar pronta
-    private static class ContratacaoExemplo {
+    // As contratações são as reais, cadastradas no módulo de Contratações
+    // (contratacoes.dat). O preço e o título vêm do serviço contratado (servicos.dat).
+    // Esta classe guarda só o que as telas de comentários e pagamentos precisam.
+    static class OpcaoContratacao {
         int id;
         String nomeServico;
         BigDecimal preco;
+        String descricao;
 
-        ContratacaoExemplo(int id, String nomeServico, String preco) {
-            this.id = id;
-            this.nomeServico = nomeServico;
-            this.preco = new BigDecimal(preco);
+        OpcaoContratacao(Contratacao contratacao, Servico servico) {
+            this.id = contratacao.getId();
+            this.nomeServico = servico.getTitulo();
+            this.preco = BigDecimal.valueOf(servico.getPrecoServico());
+            this.descricao = "#" + id + " - " + nomeServico
+                    + " - " + Conversor.formatarData(contratacao.getDataServico())
+                    + " - " + Conversor.formatarMoeda(preco);
         }
 
         @Override
         public String toString() {
-            return nomeServico + " - " + Conversor.formatarMoeda(preco);
+            return descricao;
         }
     }
 
-    private ArrayList<ContratacaoExemplo> contratacoes = new ArrayList<>();
+    // Monta as opções do diálogo. Ignora contratações canceladas e as de serviço removido.
+    // Se idCliente não for null, mostra só as contratações desse cliente.
+    static ArrayList<OpcaoContratacao> montarOpcoes(List<Contratacao> contratacoes, List<Servico> servicos,
+                                                    Integer idCliente) {
+        Map<Integer, Servico> servicosPorId = new HashMap<>();
+        for (Servico s : servicos) {
+            servicosPorId.put(s.getId(), s);
+        }
 
-    public ComentarioPagamentoController() {
-        contratacoes.add(new ContratacaoExemplo(1, "Instalação de chuveiro", "150.00"));
-        contratacoes.add(new ContratacaoExemplo(2, "Pintura de parede", "480.00"));
-        contratacoes.add(new ContratacaoExemplo(3, "Limpeza residencial", "220.00"));
-        contratacoes.add(new ContratacaoExemplo(4, "Montagem de móveis", "95.50"));
-        contratacoes.add(new ContratacaoExemplo(5, "Reparo de vazamento", "1250.00"));
+        ArrayList<OpcaoContratacao> opcoes = new ArrayList<>();
+        for (Contratacao c : contratacoes) {
+            if ("Cancelada".equals(c.getStatus())) {
+                continue;
+            }
+            if (idCliente != null && c.getIdCliente() != idCliente) {
+                continue;
+            }
+            Servico servico = servicosPorId.get(c.getIdServico());
+            if (servico == null) {
+                continue;
+            }
+            opcoes.add(new OpcaoContratacao(c, servico));
+        }
+        return opcoes;
     }
 
     public void mostrar() {
@@ -76,7 +105,7 @@ public class ComentarioPagamentoController {
     }
 
     private void abrirComentarios() {
-        ContratacaoExemplo c = escolherContratacao();
+        OpcaoContratacao c = escolherContratacao(null);
         if (c != null) {
             new ComentarioListaController(c.id, c.nomeServico).mostrar();
         }
@@ -87,7 +116,9 @@ public class ComentarioPagamentoController {
         if (usuario == null) {
             return;
         }
-        ContratacaoExemplo c = escolherContratacao();
+        // O cliente só vê as próprias contratações; o profissional escolhe entre todas
+        Integer idCliente = perfil == TipoPerfil.CLIENTE ? usuario.getId() : null;
+        OpcaoContratacao c = escolherContratacao(idCliente);
         if (c != null) {
             new PagamentoListaController(c.id, c.nomeServico, c.preco, perfil, usuario).mostrar();
         }
@@ -107,8 +138,24 @@ public class ComentarioPagamentoController {
         return dialogo.showAndWait().orElse(null);
     }
 
-    private ContratacaoExemplo escolherContratacao() {
-        ChoiceDialog<ContratacaoExemplo> dialogo = new ChoiceDialog<>(contratacoes.get(0), contratacoes);
+    // Devolve null se não houver contratação ou se o usuário cancelar
+    private OpcaoContratacao escolherContratacao(Integer idCliente) {
+        ArrayList<OpcaoContratacao> opcoes;
+        try {
+            List<Contratacao> contratacoes = new Repositorio<Contratacao>("contratacoes.dat").listar();
+            List<Servico> servicos = new Repositorio<Servico>("servicos.dat").listar();
+            opcoes = montarOpcoes(contratacoes, servicos, idCliente);
+        } catch (PersistenciaException e) {
+            Alertas.erro(e.getMessage());
+            return null;
+        }
+
+        if (opcoes.isEmpty()) {
+            Alertas.erro("Nenhuma contratação disponível. Cadastre uma em Contratações.");
+            return null;
+        }
+
+        ChoiceDialog<OpcaoContratacao> dialogo = new ChoiceDialog<>(opcoes.get(0), opcoes);
         dialogo.setTitle("Serviço");
         dialogo.setHeaderText("Selecione o serviço contratado");
         dialogo.setContentText("Serviço:");
