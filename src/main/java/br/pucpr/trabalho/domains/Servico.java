@@ -36,7 +36,6 @@ public class Servico implements Identificavel {
         this.id = id;
     }
 
-    // getters
     public String getTitulo() {
         return titulo;
     }
@@ -57,7 +56,6 @@ public class Servico implements Identificavel {
         return atualizadoEm;
     }
 
-    // setters
     public void setTitulo(String titulo) throws ValidacaoException {
         if (titulo == null || titulo.isBlank())
             throw new ValidacaoException("Informe o título do serviço.");
