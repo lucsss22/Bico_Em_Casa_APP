@@ -1,17 +1,20 @@
 package br.pucpr.trabalho.controllers;
 
-import br.pucpr.trabalho.arquivos.ArquivoServico;
+import br.pucpr.trabalho.arquivos.PersistenciaException;
+import br.pucpr.trabalho.arquivos.Repositorio;
 import br.pucpr.trabalho.domains.Servico;
 import br.pucpr.trabalho.domains.ValidacaoException;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -19,6 +22,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,13 +31,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-//CRUD serviços
+//CRUD da galeria de serviços realizados (foto + descrição de um serviço cadastrado em "Serviços")
 public class ServicoController {
     private Stage stage;
-    private ArrayList<Servico> lista = ArquivoServico.lerLista(); // READ
+    private Repositorio<Servico> repositorio = new Repositorio<>("servicos.dat");
 
-    private ListView<Servico> listView = new ListView<>();
-    private TextField txtTitulo = new TextField();
+    private TableView<Servico> tabela = new TableView<>();
+    private ComboBox<Servico> cbServico = new ComboBox<>();
     private TextArea txtDescricao = new TextArea();
     private ImageView imgPreview = new ImageView();
     private String caminhoImagem;
@@ -43,19 +47,31 @@ public class ServicoController {
     }
 
     public void mostrar() {
-        listView.getItems().setAll(lista);
-        listView.setPrefWidth(200);
-        listView.getSelectionModel().selectedItemProperty().addListener((obs, antigo, item) -> {
+        montarTabela();
+        tabela.getSelectionModel().selectedItemProperty().addListener((obs, antigo, item) -> {
             if (item != null) {
-                txtTitulo.setText(item.getTitulo());
+                cbServico.getItems().setAll(item);
+                cbServico.setValue(item);
+                cbServico.setDisable(true);
                 txtDescricao.setText(item.getDescricao());
                 caminhoImagem = item.getCaminhoImagem();
                 mostrarImagem();
             }
         });
 
-        txtTitulo.setPromptText("Nome do serviço");
-        txtDescricao.setPromptText("Descrição");
+        cbServico.setPromptText("Escolha o serviço");
+        cbServico.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Servico s) {
+                return s == null ? "" : s.getTitulo();
+            }
+
+            @Override
+            public Servico fromString(String texto) {
+                return null;
+            }
+        });
+        txtDescricao.setPromptText("Descrição do serviço realizado");
         txtDescricao.setPrefRowCount(3);
         imgPreview.setFitWidth(300);
         imgPreview.setPreserveRatio(true);
@@ -66,30 +82,67 @@ public class ServicoController {
         btnSalvar.setOnAction(e -> salvar());
         Button btnNovo = new Button("Novo");
         btnNovo.setOnAction(e -> limpar());
-        Button btnExcluir = new Button("Remover da galeria");
+        Button btnExcluir = new Button("Excluir");
         btnExcluir.setOnAction(e -> excluir());
         Button btnVoltar = new Button("Voltar");
         btnVoltar.setOnAction(e -> new MainController(stage).mostrar());
 
         VBox formulario = new VBox(10,
-                new Label("Serviço:"), txtTitulo,
+                new Label("Serviço:"), cbServico,
                 new Label("Descrição:"), txtDescricao,
                 btnImagem, imgPreview,
                 new HBox(10, btnSalvar, btnNovo, btnExcluir, btnVoltar));
         formulario.setPadding(new Insets(10));
 
         BorderPane layout = new BorderPane();
-        layout.setLeft(listView);
+        layout.setLeft(tabela);
         layout.setCenter(formulario);
 
+        carregar();
+        limpar();
+
         stage.setTitle("Serviços realizados");
-        stage.setScene(new Scene(layout, 700, 550));
+        stage.setScene(new Scene(layout, 850, 550));
         stage.show();
+    }
+
+    private void montarTabela() {
+        TableColumn<Servico, String> colServico = new TableColumn<>("Serviço");
+        colServico.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTitulo()));
+        colServico.setPrefWidth(140);
+
+        TableColumn<Servico, String> colDescricao = new TableColumn<>("Descrição");
+        colDescricao.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDescricao()));
+        colDescricao.setPrefWidth(190);
+
+        tabela.getColumns().add(colServico);
+        tabela.getColumns().add(colDescricao);
+        tabela.setPrefWidth(340);
+        tabela.setPlaceholder(new Label("Nenhum serviço realizado na galeria."));
+    }
+
+    /** READ: a tabela mostra os serviços que têm foto; o combo, os que ainda não têm. */
+    private void carregar() {
+        try {
+            ArrayList<Servico> naGaleria = new ArrayList<>();
+            ArrayList<Servico> semFoto = new ArrayList<>();
+            for (Servico s : repositorio.listar()) {
+                if (s.getCaminhoImagem() != null) {
+                    naGaleria.add(s);
+                } else {
+                    semFoto.add(s);
+                }
+            }
+            tabela.getItems().setAll(naGaleria);
+            cbServico.getItems().setAll(semFoto);
+        } catch (PersistenciaException e) {
+            new Alert(Alert.AlertType.ERROR, e.getMessage()).showAndWait();
+        }
     }
 
     private void escolherImagem() {
         FileChooser chooser = new FileChooser();
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens PNG", "*.png"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens (PNG, JPG)", "*.png", "*.jpg", "*.jpeg"));
         File arquivo = chooser.showOpenDialog(stage);
         if (arquivo == null) {
             return; // usuário cancelou
@@ -113,62 +166,82 @@ public class ServicoController {
         }
     }
 
+    /** CREATE (serviço escolhido no combo) ou UPDATE (serviço selecionado na tabela) */
     private void salvar() {
-        if (txtTitulo.getText().isBlank() || caminhoImagem == null) {
-            new Alert(Alert.AlertType.WARNING, "Informe o nome do serviço e escolha uma imagem.").showAndWait();
+        Servico escolhido = cbServico.getValue();
+        if (escolhido == null) {
+            new Alert(Alert.AlertType.WARNING, "Escolha o serviço realizado.").showAndWait();
             return;
         }
-        Servico item = listView.getSelectionModel().getSelectedItem();
-        if (item == null) {
-            new Alert(Alert.AlertType.WARNING, "Selecione na lista um serviço já cadastrado em \"Serviços\".").showAndWait();
+        if (caminhoImagem == null) {
+            new Alert(Alert.AlertType.WARNING, "Escolha uma imagem do serviço realizado.").showAndWait();
             return;
         }
         try {
-            item.setTitulo(txtTitulo.getText().trim());
-            item.setDescricao(txtDescricao.getText());
-            item.setCaminhoImagem(caminhoImagem);
+            Servico servico = repositorio.buscarPorId(escolhido.getId());
+            servico.setDescricao(txtDescricao.getText());
+            servico.setCaminhoImagem(caminhoImagem);
+            repositorio.atualizar(servico);
+            carregar();
+            limpar();
         } catch (ValidacaoException e) {
             new Alert(Alert.AlertType.WARNING, e.getMessage()).showAndWait();
-            return;
+        } catch (PersistenciaException e) {
+            new Alert(Alert.AlertType.ERROR, "Erro ao salvar: " + e.getMessage()).showAndWait();
         }
-        ArquivoServico.salvarLista(lista);
-        listView.getItems().setAll(lista);
-        listView.getSelectionModel().select(item);
     }
 
+    /** DELETE: tira o serviço da galeria (o serviço continua cadastrado em "Serviços") */
     private void excluir() {
-        Servico item = listView.getSelectionModel().getSelectedItem();
+        Servico item = tabela.getSelectionModel().getSelectedItem();
         if (item == null) {
-            new Alert(Alert.AlertType.INFORMATION, "Selecione um serviço na lista.").showAndWait();
+            new Alert(Alert.AlertType.INFORMATION, "Selecione um serviço na tabela.").showAndWait();
             return;
         }
-        Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION, "Remover a imagem e a descrição deste serviço?", ButtonType.YES, ButtonType.NO);
-        if (confirmacao.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
-            try {
-                if (item.getCaminhoImagem() != null) {
-                    Files.deleteIfExists(Paths.get(item.getCaminhoImagem()));
-                }
-            } catch (IOException e) {
-                System.err.println("Não foi possível apagar a imagem: " + e.getMessage());
-            }
-            try {
-                item.setDescricao("");
-            } catch (ValidacaoException e) {
-                System.err.println(e.getMessage());
-            }
-            item.setCaminhoImagem(null);
-            ArquivoServico.salvarLista(lista);
-            listView.getItems().setAll(lista);
-            limpar();
+        Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION, "Excluir este serviço da galeria?", ButtonType.YES, ButtonType.NO);
+        if (confirmacao.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) {
+            return;
         }
+        try {
+            Servico servico = repositorio.buscarPorId(item.getId());
+            String imagemAntiga = servico.getCaminhoImagem();
+            servico.setDescricao("");
+            servico.setCaminhoImagem(null);
+            repositorio.atualizar(servico);
+            if (imagemAntiga != null) {
+                Files.deleteIfExists(Paths.get(imagemAntiga));
+            }
+        } catch (ValidacaoException | PersistenciaException e) {
+            new Alert(Alert.AlertType.ERROR, "Erro ao excluir: " + e.getMessage()).showAndWait();
+        } catch (IOException e) {
+            System.err.println("Não foi possível apagar a imagem: " + e.getMessage());
+        }
+        carregar();
+        limpar();
     }
 
     /** Esvazia o formulário para cadastrar um item novo. */
     private void limpar() {
-        listView.getSelectionModel().clearSelection();
-        txtTitulo.clear();
+        tabela.getSelectionModel().clearSelection();
+        cbServico.setDisable(false);
+        carregarComboSemFoto();
+        cbServico.setValue(null);
         txtDescricao.clear();
         caminhoImagem = null;
         imgPreview.setImage(null);
+    }
+
+    private void carregarComboSemFoto() {
+        try {
+            ArrayList<Servico> semFoto = new ArrayList<>();
+            for (Servico s : repositorio.listar()) {
+                if (s.getCaminhoImagem() == null) {
+                    semFoto.add(s);
+                }
+            }
+            cbServico.getItems().setAll(semFoto);
+        } catch (PersistenciaException e) {
+            new Alert(Alert.AlertType.ERROR, e.getMessage()).showAndWait();
+        }
     }
 }
