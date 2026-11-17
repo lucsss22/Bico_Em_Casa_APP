@@ -1,0 +1,35 @@
+Classes de domínio
+
+• Avaliacao — representa uma avaliação com identificador, profissional avaliado, nota e comentário. O construtor recebe e valida o profissional obrigatório, a nota de 1 a 5 e o limite de 1.000 caracteres do comentário opcional. O identificador positivo é definido separadamente por setId().
+
+• Denuncia — representa uma denúncia com identificador, alvo, motivo e descrição. O construtor exige alvo e motivo preenchidos e descrição com pelo menos 20 caracteres. Os textos obrigatórios são validados e normalizados. O identificador positivo é definido separadamente por setId().
+
+As duas classes implementam Identificavel, seguindo o padrão dos domínios do projeto.
+
+Classes de persistência
+
+• RepositorioAvaliacao e RepositorioDenuncias — leem e gravam os registros, em UTF-8, respectivamente em dados/avaliacoes.properties e dados/denuncias.properties. Cada arquivo armazena a quantidade de registros e os campos da classe correspondente.
+
+• listar() carrega os registros e valida os dados lidos. salvar() grava uma lista completa no arquivo. propriedadeObrigatoria() verifica se uma propriedade necessária está presente.
+
+Classes de interface gráfica
+
+• AvaliacaoController — cria a tela JavaFX com tabela e campos de profissional, nota e comentário. Permite cadastrar, consultar, editar e excluir avaliações.
+
+• DenunciaController — cria a tela JavaFX com tabela e campos de alvo, motivo e descrição. Permite cadastrar, consultar, editar e excluir denúncias.
+
+As telas são abertas pelas opções Avaliações e Denúncias do menu principal, configuradas em MainController.
+
+Métodos dos controllers
+
+• mostrar() cria e exibe a janela, prepara os campos e a tabela e configura as ações dos botões.
+
+• configurarCampos() prepara os campos do formulário. configurarTabela() cria as colunas e define a tabela.
+
+• A seleção de uma linha preenche os campos para edição. limparCampos() limpa o formulário.
+
+• salvar() cadastra ou atualiza um registro, valida os dados e persiste a lista. proximoId() gera o próximo identificador e encontrarIndice() localiza o registro selecionado durante a edição.
+
+• excluir() pede confirmação, remove o registro selecionado e persiste a lista. carregarTabela() consulta o repositório e atualiza os dados exibidos.
+
+Falhas de validação e de leitura ou gravação são comunicadas ao usuário pela interface.
