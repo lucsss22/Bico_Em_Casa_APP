@@ -23,7 +23,7 @@ public class MainController {
     }
 
     private void criarComponentes(){
-        Label lblTitulo = new Label("Usuários e Perfis");
+        Label lblTitulo = new Label("Bico Em Casa");
         lblTitulo.setFont(new Font("Arial" , 22));
 
         Button btnIncluirUsuario = new Button("Incluir Usuario");
