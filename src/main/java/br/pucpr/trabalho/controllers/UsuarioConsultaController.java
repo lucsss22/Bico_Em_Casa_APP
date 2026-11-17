@@ -2,14 +2,20 @@ package br.pucpr.trabalho.controllers;
 
 import br.pucpr.trabalho.arquivos.ArquivoPerfil;
 import br.pucpr.trabalho.arquivos.ArquivosUsuario;
+import br.pucpr.trabalho.arquivos.PersistenciaException;
+import br.pucpr.trabalho.arquivos.Repositorio;
+import br.pucpr.trabalho.domains.Contratacao;
 import br.pucpr.trabalho.domains.Perfil;
+import br.pucpr.trabalho.domains.Servico;
 import br.pucpr.trabalho.domains.Usuario;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -19,6 +25,7 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Controller da tela de CONSULTA de usuários:
@@ -122,6 +129,37 @@ public class UsuarioConsultaController {
         ArrayList<Perfil> perfis = ArquivoPerfil.lerLista();
         if (ArquivoPerfil.usuarioTemPerfil(perfis, selecionado.getId())) {
             lblMensagem.setText("Este usuário possui um perfil. Exclua o perfil primeiro.");
+            return;
+        }
+
+        // regra: não exclui usuário que é profissional de um serviço ou cliente de uma contratação
+        try {
+            ArrayList<Servico> servicos = new Repositorio<Servico>("servicos.dat").listar();
+            for (Servico s : servicos) {
+                if (s.getIdUsuario() == selecionado.getId()) {
+                    lblMensagem.setText("Este usuário possui serviços ou contratações e não pode ser excluído.");
+                    return;
+                }
+            }
+            ArrayList<Contratacao> contratacoes = new Repositorio<Contratacao>("contratacoes.dat").listar();
+            for (Contratacao c : contratacoes) {
+                if (c.getIdCliente() == selecionado.getId()) {
+                    lblMensagem.setText("Este usuário possui serviços ou contratações e não pode ser excluído.");
+                    return;
+                }
+            }
+        } catch (PersistenciaException ex) {
+            lblMensagem.setText(ex.getMessage());
+            return;
+        }
+
+        // confirmação antes de apagar
+        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION,
+                "Deseja realmente excluir o usuário " + selecionado.getNome() + "?",
+                ButtonType.YES, ButtonType.NO);
+        alerta.setTitle("Confirmar exclusão");
+        Optional<ButtonType> resposta = alerta.showAndWait();
+        if (resposta.isEmpty() || resposta.get() != ButtonType.YES) {
             return;
         }
 

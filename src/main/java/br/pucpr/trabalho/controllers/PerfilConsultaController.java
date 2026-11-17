@@ -9,7 +9,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -19,6 +21,7 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Controller da tela de CONSULTA de perfis:
@@ -137,6 +140,16 @@ public class PerfilConsultaController {
         Perfil selecionado = tabela.getSelectionModel().getSelectedItem();
         if (selecionado == null) {
             lblMensagem.setText("Selecione um perfil na tabela.");
+            return;
+        }
+
+        // confirmação antes de apagar
+        Alert alerta = new Alert(Alert.AlertType.CONFIRMATION,
+                "Deseja realmente excluir o perfil " + selecionado.getId() + "?",
+                ButtonType.YES, ButtonType.NO);
+        alerta.setTitle("Confirmar exclusão");
+        Optional<ButtonType> resposta = alerta.showAndWait();
+        if (resposta.isEmpty() || resposta.get() != ButtonType.YES) {
             return;
         }
 
