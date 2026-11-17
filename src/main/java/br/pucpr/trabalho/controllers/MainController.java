@@ -55,13 +55,19 @@ public class MainController {
         Button btnComentarioPagamento = new Button("Comentários e Pagamentos");
         btnComentarioPagamento.setOnAction(event -> new ComentarioPagamentoController().mostrar());
 
+        Button btnServicos = new Button("Serviços");
+        btnServicos.setOnAction(event -> new ServicoListaController().mostrar());
+
+        Button btnContratacoes = new Button("Contratações");
+        btnContratacoes.setOnAction(event -> new ContratacaoListaController().mostrar());
+
         Button btnSair = new Button("Sair");
         btnSair.setOnAction(event->this.stagePrincipal.close());
 
         VBox layout = new VBox(10);
         layout.setStyle("-fx-padding:20; -fx-alignment: center;");
-        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnComentarioPagamento, btnSair);
-        this.cena = new Scene(layout , 350 , 450 );
+        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnServicos, btnContratacoes, btnComentarioPagamento, btnSair);
+        this.cena = new Scene(layout , 350 , 520 );
     }
 
 

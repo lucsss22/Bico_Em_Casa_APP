@@ -4,6 +4,7 @@ package br.pucpr.trabalho.controllers;
 import br.pucpr.trabalho.arquivos.ArquivosUsuario;
 import br.pucpr.trabalho.arquivos.PersistenciaException;
 import br.pucpr.trabalho.arquivos.Repositorio;
+import br.pucpr.trabalho.domains.Contratacao;
 import br.pucpr.trabalho.domains.Servico;
 import br.pucpr.trabalho.domains.Usuario;
 import br.pucpr.trabalho.domains.ValidacaoException;
@@ -150,15 +151,29 @@ public class ServicoFormController {
     }
 
     private void excluir() {
-        if (!Alertas.confirmar("Deseja realmente excluir o serviço \"" + servico.getTitulo() + "\"?")) {
-            return;
-        }
         try {
+            if (servicoEmUso()) {
+                Alertas.erro("Este serviço possui contratações e não pode ser excluído.");
+                return;
+            }
+            if (!Alertas.confirmar("Deseja realmente excluir o serviço \"" + servico.getTitulo() + "\"?")) {
+                return;
+            }
             repositorio.excluir(servico.getId());
             Alertas.info("Serviço excluído.");
             stage.close();
         } catch (PersistenciaException e) {
             Alertas.erro("Erro ao excluir: " + e.getMessage());
         }
+    }
+
+    private boolean servicoEmUso() throws PersistenciaException {
+        Repositorio<Contratacao> contratacoes = new Repositorio<>("contratacoes.dat");
+        for (Contratacao c : contratacoes.listar()) {
+            if (c.getIdServico() == servico.getId()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
