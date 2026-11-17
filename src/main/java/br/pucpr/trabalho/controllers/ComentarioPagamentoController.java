@@ -1,7 +1,8 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
+import br.pucpr.trabalho.arquivos.ArquivosUsuario;
 import br.pucpr.trabalho.domains.TipoPerfil;
+import br.pucpr.trabalho.domains.Usuario;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,64 +11,55 @@ import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import java.util.ArrayList;
 
-/**
- * Menu de Comentários e Pagamentos.
- * Para abrir a partir do menu principal (MainController), basta um botão:
- *
- *     new ComentarioPagamentoController().mostrar();
- */
 public class ComentarioPagamentoController {
 
-    // PROVISÓRIO: enquanto a tela de Contratação (de outro integrante) não existe,
-    // simulamos algumas contratações para conseguir abrir os comentários e os pagamentos.
-    // Quando ela existir, quem abre essas telas é a própria tela de Contratação:
-    //     new ComentarioListaController(contratacao.getId(), contratacao.getNomeServico()).mostrar();
-    //     new PagamentoListaController(contratacao.getId(), contratacao.getNomeServico(), contratacao.getPrecoServico(),
-    //                                  usuarioLogado.getPerfil()).mostrar();   // CLIENTE ou PROFISSIONAL, vindo do login
-    // e o record ContratacaoExemplo, a lista CONTRATACOES_EXEMPLO e o método escolherContratacao podem ser removidos.
-    private record ContratacaoExemplo(int id, String nomeServico, BigDecimal precoServico) {
+    // Provisório: simula contratações até a tela de Contratação ficar pronta
+    private static class ContratacaoExemplo {
+        int id;
+        String nomeServico;
+        BigDecimal preco;
+
+        ContratacaoExemplo(int id, String nomeServico, String preco) {
+            this.id = id;
+            this.nomeServico = nomeServico;
+            this.preco = new BigDecimal(preco);
+        }
+
         @Override
         public String toString() {
-            return nomeServico + " – " + Conversor.formatarMoeda(precoServico);
+            return nomeServico + " - " + Conversor.formatarMoeda(preco);
         }
     }
 
-    private static final List<ContratacaoExemplo> CONTRATACOES_EXEMPLO = List.of(
-            new ContratacaoExemplo(1, "Instalação de chuveiro", new BigDecimal("150.00")),
-            new ContratacaoExemplo(2, "Pintura de parede", new BigDecimal("480.00")),
-            new ContratacaoExemplo(3, "Limpeza residencial", new BigDecimal("220.00")),
-            new ContratacaoExemplo(4, "Montagem de móveis", new BigDecimal("95.50")),
-            new ContratacaoExemplo(5, "Reparo de vazamento", new BigDecimal("1250.00"))
-    );
+    private ArrayList<ContratacaoExemplo> contratacoes = new ArrayList<>();
+
+    public ComentarioPagamentoController() {
+        contratacoes.add(new ContratacaoExemplo(1, "Instalação de chuveiro", "150.00"));
+        contratacoes.add(new ContratacaoExemplo(2, "Pintura de parede", "480.00"));
+        contratacoes.add(new ContratacaoExemplo(3, "Limpeza residencial", "220.00"));
+        contratacoes.add(new ContratacaoExemplo(4, "Montagem de móveis", "95.50"));
+        contratacoes.add(new ContratacaoExemplo(5, "Reparo de vazamento", "1250.00"));
+    }
 
     public void mostrar() {
         Stage stage = new Stage();
         stage.setTitle("Comentários e Pagamentos");
 
-        Label titulo = new Label("Comentários e Pagamentos");
-        titulo.setFont(Font.font("Arial", FontWeight.BOLD, 22));
+        Label titulo = Estilo.titulo("Comentários e Pagamentos");
 
         Button btnComentarios = criarBotao("Comentários");
-        btnComentarios.setOnAction(e -> escolherContratacao("Comentários").ifPresent(c ->
-                new ComentarioListaController(c.id(), c.nomeServico()).mostrar()));
+        btnComentarios.setOnAction(e -> abrirComentarios());
 
-        // Cliente: realiza pagamentos
         Button btnPagamentos = criarBotao("Pagamentos (cliente)");
-        btnPagamentos.setOnAction(e -> escolherContratacao("Pagamentos").ifPresent(c ->
-                new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(), TipoPerfil.CLIENTE).mostrar()));
+        btnPagamentos.setOnAction(e -> abrirPagamentos(TipoPerfil.CLIENTE));
 
-        // Profissional: confirma recebimentos em dinheiro e estorna
         Button btnRecebimentos = criarBotao("Recebimentos (profissional)");
-        btnRecebimentos.setOnAction(e -> escolherContratacao("Recebimentos").ifPresent(c ->
-                new PagamentoListaController(c.id(), c.nomeServico(), c.precoServico(), TipoPerfil.PROFISSIONAL).mostrar()));
+        btnRecebimentos.setOnAction(e -> abrirPagamentos(TipoPerfil.PROFISSIONAL));
 
         Button btnFechar = criarBotao("Fechar");
         btnFechar.setOnAction(e -> stage.close());
@@ -83,14 +75,44 @@ public class ComentarioPagamentoController {
         stage.show();
     }
 
-    /** Pergunta de qual serviço contratado o usuário quer ver os comentários/pagamentos. */
-    private Optional<ContratacaoExemplo> escolherContratacao(String tela) {
-        ChoiceDialog<ContratacaoExemplo> dialogo =
-                new ChoiceDialog<>(CONTRATACOES_EXEMPLO.get(0), CONTRATACOES_EXEMPLO);
-        dialogo.setTitle(tela);
+    private void abrirComentarios() {
+        ContratacaoExemplo c = escolherContratacao();
+        if (c != null) {
+            new ComentarioListaController(c.id, c.nomeServico).mostrar();
+        }
+    }
+
+    private void abrirPagamentos(TipoPerfil perfil) {
+        Usuario usuario = escolherUsuario();
+        if (usuario == null) {
+            return;
+        }
+        ContratacaoExemplo c = escolherContratacao();
+        if (c != null) {
+            new PagamentoListaController(c.id, c.nomeServico, c.preco, perfil, usuario).mostrar();
+        }
+    }
+
+    // Devolve null se o usuário cancelar
+    private Usuario escolherUsuario() {
+        ArrayList<Usuario> usuarios = ArquivosUsuario.lerLista();
+        if (usuarios.isEmpty()) {
+            Alertas.erro("Nenhum usuário cadastrado.\nCadastre um usuário em \"Incluir Usuario\" no menu principal.");
+            return null;
+        }
+        ChoiceDialog<Usuario> dialogo = new ChoiceDialog<>(usuarios.get(0), usuarios);
+        dialogo.setTitle("Usuário");
+        dialogo.setHeaderText("Quem é você?");
+        dialogo.setContentText("Usuário:");
+        return dialogo.showAndWait().orElse(null);
+    }
+
+    private ContratacaoExemplo escolherContratacao() {
+        ChoiceDialog<ContratacaoExemplo> dialogo = new ChoiceDialog<>(contratacoes.get(0), contratacoes);
+        dialogo.setTitle("Serviço");
         dialogo.setHeaderText("Selecione o serviço contratado");
         dialogo.setContentText("Serviço:");
-        return dialogo.showAndWait();
+        return dialogo.showAndWait().orElse(null);
     }
 
     private Button criarBotao(String texto) {

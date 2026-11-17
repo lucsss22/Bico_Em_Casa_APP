@@ -10,6 +10,7 @@ public class Servico implements Identificavel {
     public static final int TAMANHO_MINIMO_TITULO = 3;
     public static final int TAMANHO_MAXIMO_TITULO = 100;
     public static final double PRECO_MAXIMO = 100_000.00;
+    public static final int TAMANHO_MAXIMO_DESCRICAO = 500;
 
     private int id;
     private String titulo;
@@ -17,6 +18,8 @@ public class Servico implements Identificavel {
     private double precoServico;
     private LocalDate criadoEm;
     private LocalDate atualizadoEm;
+    private String descricao = "";
+    private String caminhoImagem;
 
     public Servico(String titulo, int idUsuario, double precoServico) throws ValidacaoException {
         this.criadoEm = LocalDate.now();
@@ -56,6 +59,14 @@ public class Servico implements Identificavel {
         return atualizadoEm;
     }
 
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public String getCaminhoImagem() {
+        return caminhoImagem;
+    }
+
     public void setTitulo(String titulo) throws ValidacaoException {
         if (titulo == null || titulo.isBlank())
             throw new ValidacaoException("Informe o título do serviço.");
@@ -81,6 +92,20 @@ public class Servico implements Identificavel {
             throw new ValidacaoException("O preço do serviço não pode passar de R$ "
                     + String.format(Locale.of("pt", "BR"), "%,.2f", PRECO_MAXIMO) + ".");
         this.precoServico = precoServico;
+        marcarAtualizado();
+    }
+
+    public void setDescricao(String descricao) throws ValidacaoException {
+        if (descricao == null)
+            descricao = "";
+        if (descricao.length() > TAMANHO_MAXIMO_DESCRICAO)
+            throw new ValidacaoException("A descrição pode ter no máximo " + TAMANHO_MAXIMO_DESCRICAO + " caracteres.");
+        this.descricao = descricao.trim();
+        marcarAtualizado();
+    }
+
+    public void setCaminhoImagem(String caminhoImagem) {
+        this.caminhoImagem = caminhoImagem;
         marcarAtualizado();
     }
 

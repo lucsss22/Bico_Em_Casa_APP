@@ -61,13 +61,27 @@ public class MainController {
         Button btnContratacoes = new Button("Contratações");
         btnContratacoes.setOnAction(event -> new ContratacaoListaController().mostrar());
 
+        Button btnAvaliacoes = new Button("Avaliações");
+        btnAvaliacoes.setOnAction(event -> new AvaliacaoController().mostrar());
+
+        Button btnDenuncias = new Button("Denúncias");
+        btnDenuncias.setOnAction(event -> new DenunciaController().mostrar());
+
+        Button btnPortfolio = new Button("Portfólio");
+        btnPortfolio.setOnAction(event -> new PortfolioController(this.stagePrincipal).mostrar());
+
+        Button btnServicosRealizados = new Button("Serviços realizados");
+        btnServicosRealizados.setOnAction(event -> new ServicoController(this.stagePrincipal).mostrar());
+
         Button btnSair = new Button("Sair");
         btnSair.setOnAction(event->this.stagePrincipal.close());
 
         VBox layout = new VBox(10);
         layout.setStyle("-fx-padding:20; -fx-alignment: center;");
-        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil, btnConsultarPerfil, btnServicos, btnContratacoes, btnComentarioPagamento, btnSair);
-        this.cena = new Scene(layout , 350 , 520 );
+        layout.getChildren().addAll(lblTitulo, btnIncluirUsuario, btnConsultarUsuario, btnIncluirPerfil,
+                btnConsultarPerfil, btnServicos, btnContratacoes, btnComentarioPagamento, btnAvaliacoes,
+                btnDenuncias, btnPortfolio, btnServicosRealizados, btnSair);
+        this.cena = new Scene(layout, 350, 690);
     }
 
 

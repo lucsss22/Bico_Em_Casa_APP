@@ -1,40 +1,35 @@
-// Autor: Tayllor Vinicius Martins dos Santos
 package br.pucpr.trabalho.controllers;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 
-/**
- * Atalhos para mostrar caixas de mensagem ao usuário.
- */
-public final class
-Alertas {
+import java.util.Optional;
 
-    private Alertas() {
-    }
+public class Alertas {
 
     public static void erro(String mensagem) {
-        mostrar(Alert.AlertType.ERROR, "Erro", mensagem);
+        Alert alerta = new Alert(Alert.AlertType.ERROR);
+        alerta.setTitle("Erro");
+        alerta.setHeaderText(null);
+        alerta.setContentText(mensagem);
+        alerta.showAndWait();
     }
 
     public static void info(String mensagem) {
-        mostrar(Alert.AlertType.INFORMATION, "Informação", mensagem);
+        Alert alerta = new Alert(Alert.AlertType.INFORMATION);
+        alerta.setTitle("Informação");
+        alerta.setHeaderText(null);
+        alerta.setContentText(mensagem);
+        alerta.showAndWait();
     }
 
-    /** Pergunta Sim/Não. Devolve true se o usuário clicou em OK. */
+    // Devolve true se o usuário clicar em OK
     public static boolean confirmar(String mensagem) {
         Alert alerta = new Alert(Alert.AlertType.CONFIRMATION);
         alerta.setTitle("Confirmação");
         alerta.setHeaderText(null);
         alerta.setContentText(mensagem);
-        return alerta.showAndWait().filter(botao -> botao == ButtonType.OK).isPresent();
-    }
-
-    private static void mostrar(Alert.AlertType tipo, String titulo, String mensagem) {
-        Alert alerta = new Alert(tipo);
-        alerta.setTitle(titulo);
-        alerta.setHeaderText(null);
-        alerta.setContentText(mensagem);
-        alerta.showAndWait();
+        Optional<ButtonType> resposta = alerta.showAndWait();
+        return resposta.isPresent() && resposta.get() == ButtonType.OK;
     }
 }
